@@ -63,6 +63,20 @@ export interface GameStatistics {
   completedGames: number
 }
 
+export interface DailyGameCountDto {
+  date: string
+  count: number
+}
+
+export interface PlayerRankingDto {
+  rank: number
+  playerId: string
+  totalGames: number
+  wins: number
+  losses: number
+  winRate: number
+}
+
 export interface PlayerStatistics {
   playerId: string
   totalGames: number
