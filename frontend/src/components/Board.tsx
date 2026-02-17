@@ -99,6 +99,21 @@ export function Board({
     return !board[row][column] // Can only drop on empty cells
   }
 
+  const isPromotionZone = (row: number): boolean => {
+    if (!selectedCell) return false
+    const selectedPiece = board[selectedCell.row]?.[selectedCell.column]
+    if (!selectedPiece) return false
+
+    const promotablePieces = ['PAWN', 'LANCE', 'KNIGHT', 'SILVER', 'BISHOP', 'ROOK']
+    if (!promotablePieces.includes(selectedPiece.type)) return false
+
+    if (selectedPiece.owner === 'BLACK') {
+      return row <= 2
+    } else {
+      return row >= 6
+    }
+  }
+
   return (
     <div className="board-container">
       <div className="board">
@@ -108,9 +123,17 @@ export function Board({
               const isSelected = isCellSelected(rowIndex, colIndex)
               const isSelectable = canSelectPiece(cell)
               const isDroppable = canDropOnCell(rowIndex, colIndex)
+              const isInPromotionZone = isPromotionZone(rowIndex)
               const cellClass = `board-cell ${isSelected ? 'selected' : ''} ${
                 interactive && isSelectable ? 'selectable' : ''
-              } ${isDroppable ? 'droppable' : ''} ${interactive ? 'interactive' : ''}`
+              } ${isDroppable ? 'droppable' : ''} ${isInPromotionZone ? 'promotion-zone' : ''} ${interactive ? 'interactive' : ''}`
+
+              let backgroundColor: string | undefined
+              if (isDroppable) {
+                backgroundColor = '#d4edda'
+              } else if (isInPromotionZone) {
+                backgroundColor = '#fff3cd'
+              }
 
               return (
                 <div
@@ -119,7 +142,7 @@ export function Board({
                   onClick={() => handleCellClick(rowIndex, colIndex)}
                   style={{
                     cursor: interactive ? 'pointer' : 'default',
-                    backgroundColor: isDroppable ? '#d4edda' : undefined,
+                    backgroundColor,
                   }}
                 >
                   {cell && <Piece piece={cell} />}

@@ -13,6 +13,13 @@ export function GameDetailPage() {
   const [isMoving, setIsMoving] = useState(false)
   const [selectedDropPiece, setSelectedDropPiece] = useState<PieceType | null>(null)
   const [showResignDialog, setShowResignDialog] = useState(false)
+  const [showPromotionDialog, setShowPromotionDialog] = useState(false)
+  const [pendingMove, setPendingMove] = useState<{
+    from: { row: number; column: number }
+    to: { row: number; column: number }
+    piece: any
+    playerId: string
+  } | null>(null)
 
   useEffect(() => {
     if (gameId) {
@@ -20,33 +27,88 @@ export function GameDetailPage() {
     }
   }, [gameId, fetchGame])
 
+  // 駒が成れるかチェック
+  const canPromote = (piece: any, fromRow: number, toRow: number, owner: string): boolean => {
+    const promotablePieces = ['PAWN', 'LANCE', 'KNIGHT', 'SILVER', 'BISHOP', 'ROOK']
+    if (!promotablePieces.includes(piece.type)) {
+      return false
+    }
+
+    if (owner === 'BLACK') {
+      // 先手: 敵陣（0-2行目）に入るか、敵陣から出る
+      return toRow <= 2 || fromRow <= 2
+    } else {
+      // 後手: 敵陣（6-8行目）に入るか、敵陣から出る
+      return toRow >= 6 || fromRow >= 6
+    }
+  }
+
+  // 必ず成らなければならないかチェック
+  const mustPromote = (piece: any, toRow: number, owner: string): boolean => {
+    if (piece.type === 'PAWN' || piece.type === 'LANCE') {
+      if (owner === 'BLACK') return toRow === 0
+      else return toRow === 8
+    }
+    if (piece.type === 'KNIGHT') {
+      if (owner === 'BLACK') return toRow <= 1
+      else return toRow >= 7
+    }
+    return false
+  }
+
   const handleMove = async (
     from: { row: number; column: number },
     to: { row: number; column: number }
   ) => {
     if (!currentGame || !gameId) return
 
-    setIsMoving(true)
     setMoveError(null)
     setSelectedDropPiece(null) // Clear drop selection
 
-    const initialMoveCount = currentGame.moveCount
+    const piece = currentGame.boardState.find(
+      (p) => p.row === from.row && p.column === from.column
+    )
+
+    if (!piece) {
+      setMoveError('駒が見つかりません')
+      return
+    }
+
+    const playerId =
+      currentGame.currentTurn === 'BLACK'
+        ? currentGame.blackPlayerId
+        : currentGame.whitePlayerId
+
+    // 成り判定
+    const owner = piece.owner
+    if (canPromote(piece, from.row, to.row, owner)) {
+      if (mustPromote(piece, to.row, owner)) {
+        // 必ず成る
+        await executeMove(from, to, piece, playerId, true)
+      } else {
+        // 選択させる
+        setPendingMove({ from, to, piece, playerId })
+        setShowPromotionDialog(true)
+      }
+    } else {
+      // 成れない
+      await executeMove(from, to, piece, playerId, false)
+    }
+  }
+
+  const executeMove = async (
+    from: { row: number; column: number },
+    to: { row: number; column: number },
+    piece: any,
+    playerId: string,
+    promote: boolean
+  ) => {
+    if (!gameId) return
+
+    setIsMoving(true)
+    const initialMoveCount = currentGame?.moveCount || 0
 
     try {
-      const piece = currentGame.boardState.find(
-        (p) => p.row === from.row && p.column === from.column
-      )
-
-      if (!piece) {
-        throw new Error('駒が見つかりません')
-      }
-
-      // 現在のターンに基づいてプレイヤーIDを取得
-      const playerId =
-        currentGame.currentTurn === 'BLACK'
-          ? currentGame.blackPlayerId
-          : currentGame.whitePlayerId
-
       await api.makeMove(gameId, {
         player: playerId,
         fromRow: from.row,
@@ -54,7 +116,7 @@ export function GameDetailPage() {
         toRow: to.row,
         toColumn: to.column,
         pieceType: piece.type,
-        promote: false, // TODO: 成り判定を実装
+        promote,
       })
 
       await waitForProjectionUpdate(initialMoveCount)
@@ -62,6 +124,20 @@ export function GameDetailPage() {
       setMoveError(err instanceof Error ? err.message : '駒の移動に失敗しました')
     } finally {
       setIsMoving(false)
+    }
+  }
+
+  const handlePromotionChoice = async (promote: boolean) => {
+    setShowPromotionDialog(false)
+    if (pendingMove) {
+      await executeMove(
+        pendingMove.from,
+        pendingMove.to,
+        pendingMove.piece,
+        pendingMove.playerId,
+        promote
+      )
+      setPendingMove(null)
     }
   }
 
@@ -184,6 +260,73 @@ export function GameDetailPage() {
 
   return (
     <div className="page game-detail-page">
+      {showPromotionDialog && pendingMove && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '30px',
+            borderRadius: '8px',
+            maxWidth: '400px',
+            width: '90%',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>駒を成りますか？</h3>
+            <p style={{ marginBottom: '20px', lineHeight: '1.6' }}>
+              {pendingMove.piece.type === 'PAWN' && '歩'}
+              {pendingMove.piece.type === 'LANCE' && '香'}
+              {pendingMove.piece.type === 'KNIGHT' && '桂'}
+              {pendingMove.piece.type === 'SILVER' && '銀'}
+              {pendingMove.piece.type === 'BISHOP' && '角'}
+              {pendingMove.piece.type === 'ROOK' && '飛'}
+              を成りますか？
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button
+                onClick={() => handlePromotionChoice(false)}
+                style={{
+                  padding: '12px 24px',
+                  fontSize: '16px',
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  minWidth: '120px'
+                }}
+              >
+                成らない
+              </button>
+              <button
+                onClick={() => handlePromotionChoice(true)}
+                style={{
+                  padding: '12px 24px',
+                  fontSize: '16px',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  minWidth: '120px'
+                }}
+              >
+                成る
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showResignDialog && (
         <div style={{
           position: 'fixed',
