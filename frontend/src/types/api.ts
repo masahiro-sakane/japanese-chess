@@ -31,6 +31,7 @@ export interface GameQueryDto {
   status: string
   currentTurn: Player
   winner: Player | null
+  endReason: string | null
   boardState: PiecePosition[]
   blackCapturedPieces: string[]
   whiteCapturedPieces: string[]

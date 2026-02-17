@@ -189,6 +189,7 @@ public class GameProjectionHandler {
 
         gameEntity.setStatus("FINISHED");
         gameEntity.setWinner(event.getWinner().name());
+        gameEntity.setEndReason(event.getReason().name());
         gameEntity.setCurrentTurn(null);
         gameEntityRepository.save(gameEntity);
 

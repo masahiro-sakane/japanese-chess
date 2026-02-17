@@ -38,6 +38,9 @@ public class GameEntity {
     @Column(name = "winner", length = 10)
     private String winner;
 
+    @Column(name = "end_reason", length = 20)
+    private String endReason;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

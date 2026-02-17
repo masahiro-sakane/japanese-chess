@@ -18,6 +18,7 @@ public class GameQueryDto {
     private String status;
     private String currentTurn;
     private String winner;
+    private String endReason;
     private List<PiecePosition> boardState;
     private List<String> blackCapturedPieces;
     private List<String> whiteCapturedPieces;

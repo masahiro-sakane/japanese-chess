@@ -16,6 +16,7 @@ public class Game {
     private PlayerColor currentTurn;
     private GameStatus status;
     private final MoveValidator moveValidator;
+    private final CheckDetector checkDetector;
     private final List<DomainEvent> uncommittedEvents;
 
     public enum GameStatus {
@@ -26,6 +27,7 @@ public class Game {
 
     public Game() {
         this.moveValidator = new MoveValidator();
+        this.checkDetector = new CheckDetector();
         this.uncommittedEvents = new ArrayList<>();
         this.status = GameStatus.NOT_STARTED;
     }
@@ -66,6 +68,24 @@ public class Game {
 
         apply(event);
         uncommittedEvents.add(event);
+
+        // Check for checkmate after the move
+        checkForCheckmate();
+    }
+
+    private void checkForCheckmate() {
+        // Check if the opponent (who just received the turn) is in checkmate
+        if (checkDetector.isCheckmate(board, currentTurn)) {
+            // Current turn player is in checkmate, so the previous player wins
+            PlayerColor winner = currentTurn.opposite();
+            GameEndedEvent event = new GameEndedEvent(
+                gameId,
+                winner,
+                GameEndedEvent.EndReason.CHECKMATE
+            );
+            apply(event);
+            uncommittedEvents.add(event);
+        }
     }
 
     public void resign(PlayerColor player) {

@@ -112,6 +112,7 @@ public class GameQueryService {
         dto.setStatus(gameEntity.getStatus());
         dto.setCurrentTurn(gameEntity.getCurrentTurn());
         dto.setWinner(gameEntity.getWinner());
+        dto.setEndReason(gameEntity.getEndReason());
         dto.setCreatedAt(gameEntity.getCreatedAt());
         dto.setUpdatedAt(gameEntity.getUpdatedAt());
 

@@ -284,6 +284,13 @@ export function GameDetailPage() {
                 <>
                   <dt>勝者:</dt>
                   <dd>{currentGame.winner === 'BLACK' ? '先手' : '後手'}</dd>
+                  <dt>終了理由:</dt>
+                  <dd>
+                    {currentGame.endReason === 'CHECKMATE' && '詰み (Checkmate)'}
+                    {currentGame.endReason === 'RESIGNATION' && '投了 (Resignation)'}
+                    {currentGame.endReason === 'TIMEOUT' && 'タイムアップ (Timeout)'}
+                    {!currentGame.endReason && '不明'}
+                  </dd>
                 </>
               )}
 
@@ -334,6 +341,24 @@ export function GameDetailPage() {
 
         <div className="game-board-panel">
           <h3>盤面</h3>
+
+          {currentGame.status === 'FINISHED' && currentGame.endReason === 'CHECKMATE' && (
+            <div style={{
+              padding: '20px',
+              marginBottom: '20px',
+              backgroundColor: '#d4edda',
+              border: '3px solid #28a745',
+              borderRadius: '8px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px' }}>
+                🎉 詰み! (Checkmate!)
+              </div>
+              <div style={{ fontSize: '18px', color: '#155724' }}>
+                {currentGame.winner === 'BLACK' ? '先手' : '後手'}の勝利です!
+              </div>
+            </div>
+          )}
 
           {currentGame.status === 'IN_PROGRESS' && (
             <>

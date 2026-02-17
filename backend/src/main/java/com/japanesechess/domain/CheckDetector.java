@@ -4,12 +4,13 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Detects check (王手) conditions in Japanese Chess (Shogi).
+ * Detects check (王手) and checkmate (詰み) conditions in Japanese Chess (Shogi).
  * A player is in check when their king can be captured by an opponent's piece.
+ * A player is in checkmate when they are in check and have no legal moves to escape.
  */
 public class CheckDetector {
 
-    private final MoveValidator moveValidator = new MoveValidator();
+    private MoveValidator moveValidator;
 
     /**
      * Checks if the specified player's king is in check.
@@ -40,6 +41,84 @@ public class CheckDetector {
         // Simulate the move on a copy of the board
         Board boardAfterMove = board.applyMove(move);
         return isInCheck(boardAfterMove, move.getPlayer());
+    }
+
+    /**
+     * Checks if the specified player is in checkmate (詰み).
+     * Checkmate occurs when:
+     * 1. The player's king is in check
+     * 2. No legal move can resolve the check
+     *
+     * @param board The current board state
+     * @param player The player to check
+     * @return true if the player is in checkmate, false otherwise
+     */
+    public boolean isCheckmate(Board board, PlayerColor player) {
+        // Must be in check to be in checkmate
+        if (!isInCheck(board, player)) {
+            return false;
+        }
+
+        // Check if any legal move can escape check
+        return !hasLegalMove(board, player);
+    }
+
+    /**
+     * Determines if the player has any legal move available.
+     *
+     * @param board The current board state
+     * @param player The player to check
+     * @return true if the player has at least one legal move
+     */
+    private boolean hasLegalMove(Board board, PlayerColor player) {
+        // Get MoveValidator instance (lazy initialization to avoid circular dependency)
+        if (moveValidator == null) {
+            moveValidator = new MoveValidator();
+        }
+
+        List<Piece> playerPieces = board.getPiecesForPlayer(player);
+
+        // Try all possible moves for all pieces
+        for (Piece piece : playerPieces) {
+            Position from = piece.getPosition();
+
+            // Try all possible destination squares
+            for (int row = 0; row < 9; row++) {
+                for (int col = 0; col < 9; col++) {
+                    Position to = new Position(row, col);
+
+                    // Try normal move
+                    Move normalMove = Move.normalMove(from, to, piece.getType(), player);
+                    if (moveValidator.isValidMove(board, normalMove)) {
+                        return true; // Found a legal move
+                    }
+
+                    // Try promotion move if piece can promote
+                    if (piece.canPromoteAt(to)) {
+                        Move promoteMove = Move.promoteMove(from, to, piece.getType(), player);
+                        if (moveValidator.isValidMove(board, promoteMove)) {
+                            return true; // Found a legal move
+                        }
+                    }
+                }
+            }
+        }
+
+        // Try drop moves for captured pieces
+        List<PieceType> capturedPieces = board.getCapturedPieces(player);
+        for (PieceType pieceType : capturedPieces) {
+            for (int row = 0; row < 9; row++) {
+                for (int col = 0; col < 9; col++) {
+                    Position to = new Position(row, col);
+                    Move dropMove = Move.dropMove(to, pieceType, player);
+                    if (moveValidator.isValidMove(board, dropMove)) {
+                        return true; // Found a legal drop
+                    }
+                }
+            }
+        }
+
+        return false; // No legal moves available
     }
 
     /**
