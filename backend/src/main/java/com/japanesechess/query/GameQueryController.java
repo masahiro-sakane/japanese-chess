@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/queries")
@@ -87,6 +88,20 @@ public class GameQueryController {
             @Parameter(description = "プレイヤーID") @PathVariable UUID playerId) {
         PlayerStatistics statistics = queryService.getPlayerStatistics(playerId);
         return ResponseEntity.ok(statistics);
+    }
+
+    @Operation(summary = "日別対局数", description = "過去30日間の日別対局数を取得します（折れ線グラフ用）")
+    @ApiResponse(responseCode = "200", description = "成功")
+    @GetMapping("/statistics/daily")
+    public ResponseEntity<List<DailyGameCountDto>> getDailyGameCounts() {
+        return ResponseEntity.ok(queryService.getDailyGameCounts());
+    }
+
+    @Operation(summary = "プレイヤーランキング", description = "勝利数上位10名のランキングを取得します")
+    @ApiResponse(responseCode = "200", description = "成功")
+    @GetMapping("/statistics/rankings")
+    public ResponseEntity<List<PlayerRankingDto>> getPlayerRankings() {
+        return ResponseEntity.ok(queryService.getPlayerRankings());
     }
 
     @Operation(summary = "指し手履歴", description = "ゲームの全指し手履歴を取得します")

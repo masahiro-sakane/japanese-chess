@@ -4,6 +4,8 @@ import type {
   PageResponse,
   GameStatistics,
   PlayerStatistics,
+  DailyGameCountDto,
+  PlayerRankingDto,
   MoveHistoryDto,
   BoardStateDto,
   GameResponse,
@@ -63,6 +65,16 @@ export const gameService = {
     const response = await api.get<PlayerStatistics>(
       `/queries/statistics/player/${playerId}`
     )
+    return response.data
+  },
+
+  async getDailyGameCounts(): Promise<DailyGameCountDto[]> {
+    const response = await api.get<DailyGameCountDto[]>('/queries/statistics/daily')
+    return response.data
+  },
+
+  async getPlayerRankings(): Promise<PlayerRankingDto[]> {
+    const response = await api.get<PlayerRankingDto[]>('/queries/statistics/rankings')
     return response.data
   },
 

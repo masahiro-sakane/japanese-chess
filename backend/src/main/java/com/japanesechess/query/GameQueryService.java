@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -102,6 +103,34 @@ public class GameQueryService {
         long losses = totalGames - activeGames - wins;
 
         return new PlayerStatistics(playerId, totalGames, activeGames, wins, losses);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DailyGameCountDto> getDailyGameCounts() {
+        List<Object[]> rows = gameEntityRepository.countGamesPerDay();
+        List<DailyGameCountDto> result = new ArrayList<>();
+        for (Object[] row : rows) {
+            String date = (String) row[0];
+            long count = ((Number) row[1]).longValue();
+            result.add(new DailyGameCountDto(date, count));
+        }
+        return result;
+    }
+
+    @Transactional(readOnly = true)
+    public List<PlayerRankingDto> getPlayerRankings() {
+        List<Object[]> rows = gameEntityRepository.findPlayerRankings();
+        List<PlayerRankingDto> result = new ArrayList<>();
+        for (int i = 0; i < rows.size(); i++) {
+            Object[] row = rows.get(i);
+            UUID playerId = UUID.fromString(row[0].toString());
+            long totalGames = ((Number) row[1]).longValue();
+            long wins = ((Number) row[2]).longValue();
+            long losses = totalGames - wins;
+            double winRate = totalGames > 0 ? (wins * 100.0 / totalGames) : 0.0;
+            result.add(new PlayerRankingDto(i + 1, playerId, totalGames, wins, losses, winRate));
+        }
+        return result;
     }
 
     private GameQueryDto mapToDto(GameEntity gameEntity, GameViewEntity gameView) {
