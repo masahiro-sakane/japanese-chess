@@ -4,7 +4,8 @@ import { useGameStore } from '../stores/gameStore'
 import { Board } from '../components/Board'
 import { Hand } from '../components/Hand'
 import { api } from '../services/api'
-import type { PieceType } from '../types/api'
+import type { GameQueryDto, PieceType } from '../types/api'
+import { useGameWebSocket } from '../hooks/useGameWebSocket'
 
 export function GameDetailPage() {
   const { gameId } = useParams<{ gameId: string }>()
@@ -26,6 +27,10 @@ export function GameDetailPage() {
       fetchGame(gameId)
     }
   }, [gameId, fetchGame])
+
+  useGameWebSocket(gameId, (game: GameQueryDto) => {
+    useGameStore.setState({ currentGame: game })
+  })
 
   // 駒が成れるかチェック
   const canPromote = (piece: any, fromRow: number, toRow: number, owner: string): boolean => {
@@ -106,7 +111,6 @@ export function GameDetailPage() {
     if (!gameId) return
 
     setIsMoving(true)
-    const initialMoveCount = currentGame?.moveCount || 0
 
     try {
       await api.makeMove(gameId, {
@@ -118,8 +122,8 @@ export function GameDetailPage() {
         pieceType: piece.type,
         promote,
       })
-
-      await waitForProjectionUpdate(initialMoveCount)
+      // Fallback fetch in case WebSocket is unavailable
+      await fetchGame(gameId)
     } catch (err) {
       setMoveError(err instanceof Error ? err.message : '駒の移動に失敗しました')
     } finally {
@@ -147,11 +151,22 @@ export function GameDetailPage() {
   ) => {
     if (!currentGame || !gameId) return
 
+    // 二歩チェック: 歩兵を打つ場合、同じ列に自分の歩兵がないか確認
+    if (pieceType === 'PAWN') {
+      const currentPlayer = currentGame.currentTurn
+      const hasPawnInColumn = currentGame.boardState.some(
+        (p) => p.type === 'PAWN' && p.owner === currentPlayer && p.column === to.column
+      )
+      if (hasPawnInColumn) {
+        setMoveError('二歩です。同じ列に歩兵がある場所には歩兵を打てません。')
+        setSelectedDropPiece(null)
+        return
+      }
+    }
+
     setIsMoving(true)
     setMoveError(null)
     setSelectedDropPiece(null)
-
-    const initialMoveCount = currentGame.moveCount
 
     try {
       // 現在のターンに基づいてプレイヤーIDを取得
@@ -166,34 +181,12 @@ export function GameDetailPage() {
         toColumn: to.column,
         pieceType,
       })
-
-      await waitForProjectionUpdate(initialMoveCount)
+      // Fallback fetch in case WebSocket is unavailable
+      await fetchGame(gameId)
     } catch (err) {
       setMoveError(err instanceof Error ? err.message : '駒を打つことに失敗しました')
     } finally {
       setIsMoving(false)
-    }
-  }
-
-  const waitForProjectionUpdate = async (initialMoveCount: number) => {
-    let retries = 0
-    const maxRetries = 20
-    let updated = false
-
-    while (retries < maxRetries && !updated) {
-      await new Promise(resolve => setTimeout(resolve, 200))
-      await fetchGame(gameId!)
-
-      const state = useGameStore.getState()
-      if (state.currentGame && state.currentGame.moveCount > initialMoveCount) {
-        updated = true
-        break
-      }
-      retries++
-    }
-
-    if (!updated) {
-      setMoveError('盤面の更新に時間がかかっています。ページをリロードしてください。')
     }
   }
 
@@ -220,8 +213,7 @@ export function GameDetailPage() {
           : currentGame.whitePlayerId
 
       await api.resignGame(gameId, playerId)
-
-      // Fetch updated game state
+      // Fallback fetch in case WebSocket is unavailable
       await fetchGame(gameId)
     } catch (err) {
       setMoveError(err instanceof Error ? err.message : '投了に失敗しました')
@@ -588,6 +580,17 @@ export function GameDetailPage() {
             currentTurn={currentGame.currentTurn}
             dropMode={!!selectedDropPiece}
             dropPieceType={selectedDropPiece}
+            invalidDropColumns={
+              selectedDropPiece === 'PAWN'
+                ? currentGame.boardState
+                    .filter(
+                      (p) =>
+                        p.type === 'PAWN' &&
+                        p.owner === currentGame.currentTurn
+                    )
+                    .map((p) => p.column)
+                : []
+            }
           />
         </div>
       </div>

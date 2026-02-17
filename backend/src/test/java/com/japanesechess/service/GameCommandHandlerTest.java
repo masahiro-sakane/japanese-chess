@@ -7,7 +7,9 @@ import com.japanesechess.command.ResignGameCommand;
 import com.japanesechess.domain.PieceType;
 import com.japanesechess.domain.PlayerColor;
 import com.japanesechess.domain.Position;
+import com.japanesechess.projection.GameProjectionHandler;
 import com.japanesechess.repository.GameRepository;
+import com.japanesechess.websocket.GameWebSocketNotifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,11 +29,17 @@ class GameCommandHandlerTest {
     @Mock
     private GameRepository gameRepository;
 
+    @Mock
+    private GameProjectionHandler projectionHandler;
+
+    @Mock
+    private GameWebSocketNotifier webSocketNotifier;
+
     private GameCommandHandler commandHandler;
 
     @BeforeEach
     void setUp() {
-        commandHandler = new GameCommandHandler(gameRepository);
+        commandHandler = new GameCommandHandler(gameRepository, projectionHandler, webSocketNotifier);
     }
 
     @Test
@@ -73,6 +81,7 @@ class GameCommandHandlerTest {
         commandHandler.handle(command);
 
         verify(gameRepository, times(1)).save(game);
+        verify(webSocketNotifier, times(1)).notifyGameUpdated(gameId);
     }
 
     @Test

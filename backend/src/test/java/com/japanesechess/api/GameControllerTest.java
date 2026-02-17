@@ -6,6 +6,8 @@ import com.japanesechess.api.dto.MovePieceRequest;
 import com.japanesechess.api.dto.ResignGameRequest;
 import com.japanesechess.domain.PieceType;
 import com.japanesechess.domain.PlayerColor;
+import com.japanesechess.query.GameQueryDto;
+import com.japanesechess.query.GameQueryService;
 import com.japanesechess.service.GameCommandHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,7 @@ import java.util.UUID;
 
 import com.japanesechess.command.CreateGameCommand;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -34,6 +37,9 @@ class GameControllerTest {
 
     @MockBean
     private GameCommandHandler commandHandler;
+
+    @MockBean
+    private GameQueryService queryService;
 
     @Test
     void createGame_ShouldReturn201_WhenValidRequest() throws Exception {
@@ -68,6 +74,12 @@ class GameControllerTest {
         UUID gameId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
 
+        // Set up game query to identify player as BLACK
+        GameQueryDto gameDto = new GameQueryDto();
+        gameDto.setBlackPlayerId(playerId);
+        gameDto.setWhitePlayerId(UUID.randomUUID());
+        when(queryService.getGameById(eq(gameId))).thenReturn(gameDto);
+
         MovePieceRequest request = new MovePieceRequest(
             playerId,
             6, 4,
@@ -87,6 +99,12 @@ class GameControllerTest {
     void resignGame_ShouldReturn200_WhenValidRequest() throws Exception {
         UUID gameId = UUID.randomUUID();
         UUID playerId = UUID.randomUUID();
+
+        // Set up game query to identify player as BLACK
+        GameQueryDto gameDto = new GameQueryDto();
+        gameDto.setBlackPlayerId(playerId);
+        gameDto.setWhitePlayerId(UUID.randomUUID());
+        when(queryService.getGameById(eq(gameId))).thenReturn(gameDto);
 
         ResignGameRequest request = new ResignGameRequest(playerId);
 

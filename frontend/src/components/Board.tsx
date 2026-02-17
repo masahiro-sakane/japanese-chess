@@ -12,6 +12,7 @@ interface BoardProps {
   currentTurn?: Player
   dropMode?: boolean
   dropPieceType?: PieceType | null
+  invalidDropColumns?: number[]
 }
 
 export function Board({
@@ -21,7 +22,8 @@ export function Board({
   interactive = false,
   currentTurn,
   dropMode = false,
-  dropPieceType = null
+  dropPieceType = null,
+  invalidDropColumns = []
 }: BoardProps) {
   const [selectedCell, setSelectedCell] = useState<{ row: number; column: number } | null>(null)
 
@@ -96,7 +98,9 @@ export function Board({
 
   const canDropOnCell = (row: number, column: number): boolean => {
     if (!dropMode || !dropPieceType) return false
-    return !board[row][column] // Can only drop on empty cells
+    if (board[row][column]) return false // Can only drop on empty cells
+    if (invalidDropColumns.includes(column)) return false // 二歩など無効な列
+    return true
   }
 
   const isPromotionZone = (row: number): boolean => {

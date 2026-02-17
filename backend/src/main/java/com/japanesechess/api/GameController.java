@@ -35,18 +35,9 @@ public class GameController {
     private PlayerColor getPlayerColor(UUID gameId, UUID playerId) {
         GameQueryDto game = queryService.getGameById(gameId);
 
-        System.out.println("=== DEBUG getPlayerColor ===");
-        System.out.println("Requested playerId: " + playerId);
-        System.out.println("Game blackPlayerId: " + game.getBlackPlayerId());
-        System.out.println("Game whitePlayerId: " + game.getWhitePlayerId());
-        System.out.println("Game currentTurn: " + game.getCurrentTurn());
-
-        // UUID同士で比較
         if (playerId.equals(game.getBlackPlayerId())) {
-            System.out.println("Result: BLACK");
             return PlayerColor.BLACK;
         } else if (playerId.equals(game.getWhitePlayerId())) {
-            System.out.println("Result: WHITE");
             return PlayerColor.WHITE;
         } else {
             throw new ResponseStatusException(
@@ -97,8 +88,7 @@ public class GameController {
 
         commandHandler.handle(command);
 
-        // コマンド実行後、Projection更新を待たずに次の手番を返す
-        // 注: Projectionは非同期で更新されるため、ここでは次の手番を推測
+        // コマンド実行後、Projectionは同期的に更新済み
         PlayerColor nextTurn = playerColor.opposite();
 
         Map<String, Object> response = new HashMap<>();
