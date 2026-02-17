@@ -13,6 +13,7 @@ import com.japanesechess.event.PieceDroppedEvent;
 import com.japanesechess.event.PieceMovedEvent;
 import com.japanesechess.projection.GameProjectionHandler;
 import com.japanesechess.repository.GameRepository;
+import com.japanesechess.websocket.GameWebSocketNotifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,10 +25,12 @@ public class GameCommandHandler {
 
     private final GameRepository gameRepository;
     private final GameProjectionHandler projectionHandler;
+    private final GameWebSocketNotifier webSocketNotifier;
 
-    public GameCommandHandler(GameRepository gameRepository, GameProjectionHandler projectionHandler) {
+    public GameCommandHandler(GameRepository gameRepository, GameProjectionHandler projectionHandler, GameWebSocketNotifier webSocketNotifier) {
         this.gameRepository = gameRepository;
         this.projectionHandler = projectionHandler;
+        this.webSocketNotifier = webSocketNotifier;
     }
 
     @Transactional
@@ -41,6 +44,7 @@ public class GameCommandHandler {
         List<DomainEvent> newEvents = game.getUncommittedEvents();
         gameRepository.save(game);
         applyProjections(newEvents);
+        webSocketNotifier.notifyGameUpdated(command.getGameId());
         return command.getGameId();
     }
 
@@ -70,6 +74,7 @@ public class GameCommandHandler {
         List<DomainEvent> newEvents = game.getUncommittedEvents();
         gameRepository.save(game);
         applyProjections(newEvents);
+        webSocketNotifier.notifyGameUpdated(command.getGameId());
     }
 
     @Transactional
@@ -87,6 +92,7 @@ public class GameCommandHandler {
         List<DomainEvent> newEvents = game.getUncommittedEvents();
         gameRepository.save(game);
         applyProjections(newEvents);
+        webSocketNotifier.notifyGameUpdated(command.getGameId());
     }
 
     @Transactional
@@ -98,6 +104,7 @@ public class GameCommandHandler {
         List<DomainEvent> newEvents = game.getUncommittedEvents();
         gameRepository.save(game);
         applyProjections(newEvents);
+        webSocketNotifier.notifyGameUpdated(command.getGameId());
     }
 
     private void applyProjections(List<DomainEvent> events) {
