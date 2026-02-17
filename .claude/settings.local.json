@@ -119,7 +119,8 @@
       "Bash(/tmp/verify-fixes.sh:*)",
       "Bash(/tmp/current-status.sh:*)",
       "Bash(/tmp/current-status.sh)",
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "Bash(npm run type-check:*)"
     ]
   }
 }

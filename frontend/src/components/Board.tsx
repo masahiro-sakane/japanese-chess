@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { PiecePosition, PiecePositionDto, Player } from '../types/api'
+import type { PiecePosition, PiecePositionDto, Player, PieceType } from '../types/api'
 import { Piece } from './Piece'
 
 type BoardPiece = PiecePosition | PiecePositionDto
@@ -7,11 +7,22 @@ type BoardPiece = PiecePosition | PiecePositionDto
 interface BoardProps {
   boardState: BoardPiece[]
   onMove?: (from: { row: number; column: number }, to: { row: number; column: number }) => void
+  onDrop?: (to: { row: number; column: number }, pieceType: PieceType) => void
   interactive?: boolean
   currentTurn?: Player
+  dropMode?: boolean
+  dropPieceType?: PieceType | null
 }
 
-export function Board({ boardState, onMove, interactive = false, currentTurn }: BoardProps) {
+export function Board({
+  boardState,
+  onMove,
+  onDrop,
+  interactive = false,
+  currentTurn,
+  dropMode = false,
+  dropPieceType = null
+}: BoardProps) {
   const [selectedCell, setSelectedCell] = useState<{ row: number; column: number } | null>(null)
 
   const createEmptyBoard = (): (PiecePosition | null)[][] => {
@@ -40,24 +51,36 @@ export function Board({ boardState, onMove, interactive = false, currentTurn }: 
   })
 
   const handleCellClick = (row: number, column: number) => {
-    if (!interactive || !onMove) return
+    if (!interactive) return
 
     const clickedPiece = board[row][column]
 
-    if (selectedCell) {
-      // 移動先をクリック
-      if (selectedCell.row === row && selectedCell.column === column) {
-        // 同じマスをクリック → 選択解除
-        setSelectedCell(null)
-      } else {
-        // 移動を実行
-        onMove(selectedCell, { row, column })
-        setSelectedCell(null)
+    // Drop mode: place piece from hand
+    if (dropMode && dropPieceType && onDrop) {
+      // Only drop on empty cells
+      if (!clickedPiece) {
+        onDrop({ row, column }, dropPieceType)
       }
-    } else {
-      // 駒を選択
-      if (clickedPiece && clickedPiece.owner === currentTurn) {
-        setSelectedCell({ row, column })
+      return
+    }
+
+    // Move mode: move pieces on board
+    if (onMove) {
+      if (selectedCell) {
+        // 移動先をクリック
+        if (selectedCell.row === row && selectedCell.column === column) {
+          // 同じマスをクリック → 選択解除
+          setSelectedCell(null)
+        } else {
+          // 移動を実行
+          onMove(selectedCell, { row, column })
+          setSelectedCell(null)
+        }
+      } else {
+        // 駒を選択
+        if (clickedPiece && clickedPiece.owner === currentTurn) {
+          setSelectedCell({ row, column })
+        }
       }
     }
   }
@@ -67,8 +90,13 @@ export function Board({ boardState, onMove, interactive = false, currentTurn }: 
   }
 
   const canSelectPiece = (piece: PiecePosition | null): boolean => {
-    if (!interactive || !piece) return false
+    if (!interactive || !piece || dropMode) return false
     return piece.owner === currentTurn
+  }
+
+  const canDropOnCell = (row: number, column: number): boolean => {
+    if (!dropMode || !dropPieceType) return false
+    return !board[row][column] // Can only drop on empty cells
   }
 
   return (
@@ -79,16 +107,20 @@ export function Board({ boardState, onMove, interactive = false, currentTurn }: 
             {row.map((cell, colIndex) => {
               const isSelected = isCellSelected(rowIndex, colIndex)
               const isSelectable = canSelectPiece(cell)
+              const isDroppable = canDropOnCell(rowIndex, colIndex)
               const cellClass = `board-cell ${isSelected ? 'selected' : ''} ${
                 interactive && isSelectable ? 'selectable' : ''
-              } ${interactive ? 'interactive' : ''}`
+              } ${isDroppable ? 'droppable' : ''} ${interactive ? 'interactive' : ''}`
 
               return (
                 <div
                   key={`${rowIndex}-${colIndex}`}
                   className={cellClass}
                   onClick={() => handleCellClick(rowIndex, colIndex)}
-                  style={{ cursor: interactive ? 'pointer' : 'default' }}
+                  style={{
+                    cursor: interactive ? 'pointer' : 'default',
+                    backgroundColor: isDroppable ? '#d4edda' : undefined,
+                  }}
                 >
                   {cell && <Piece piece={cell} />}
                 </div>

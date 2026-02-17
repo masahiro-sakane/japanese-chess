@@ -1,5 +1,21 @@
 export type Player = 'BLACK' | 'WHITE'
 
+export type PieceType =
+  | 'PAWN'
+  | 'LANCE'
+  | 'KNIGHT'
+  | 'SILVER'
+  | 'GOLD'
+  | 'BISHOP'
+  | 'ROOK'
+  | 'KING'
+  | 'PROMOTED_PAWN'
+  | 'PROMOTED_LANCE'
+  | 'PROMOTED_KNIGHT'
+  | 'PROMOTED_SILVER'
+  | 'PROMOTED_BISHOP'
+  | 'PROMOTED_ROOK'
+
 export interface PiecePosition {
   row: number
   column: number

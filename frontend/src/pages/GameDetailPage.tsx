@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
 import { Board } from '../components/Board'
+import { Hand } from '../components/Hand'
 import { api } from '../services/api'
+import type { PieceType } from '../types/api'
 
 export function GameDetailPage() {
   const { gameId } = useParams<{ gameId: string }>()
   const { currentGame, loading, error, fetchGame, clearError } = useGameStore()
   const [moveError, setMoveError] = useState<string | null>(null)
   const [isMoving, setIsMoving] = useState(false)
+  const [selectedDropPiece, setSelectedDropPiece] = useState<PieceType | null>(null)
 
   useEffect(() => {
     if (gameId) {
@@ -24,6 +27,7 @@ export function GameDetailPage() {
 
     setIsMoving(true)
     setMoveError(null)
+    setSelectedDropPiece(null) // Clear drop selection
 
     const initialMoveCount = currentGame.moveCount
 
@@ -52,35 +56,75 @@ export function GameDetailPage() {
         promote: false, // TODO: 成り判定を実装
       })
 
-      console.log('✅ Move command executed successfully')
-
-      // Projectionの更新を待つ（ポーリング）
-      let retries = 0
-      const maxRetries = 20
-      let updated = false
-
-      while (retries < maxRetries && !updated) {
-        await new Promise(resolve => setTimeout(resolve, 200))
-        await fetchGame(gameId)
-
-        const state = useGameStore.getState()
-        if (state.currentGame && state.currentGame.moveCount > initialMoveCount) {
-          console.log('✅ Projection updated! Move count:', state.currentGame.moveCount)
-          updated = true
-          break
-        }
-        retries++
-        console.log(`⏳ Waiting for projection update... (${retries}/${maxRetries})`)
-      }
-
-      if (!updated) {
-        console.warn('⚠️ Projection update timeout')
-        setMoveError('盤面の更新に時間がかかっています。ページをリロードしてください。')
-      }
+      await waitForProjectionUpdate(initialMoveCount)
     } catch (err) {
       setMoveError(err instanceof Error ? err.message : '駒の移動に失敗しました')
     } finally {
       setIsMoving(false)
+    }
+  }
+
+  const handleDrop = async (
+    to: { row: number; column: number },
+    pieceType: PieceType
+  ) => {
+    if (!currentGame || !gameId) return
+
+    setIsMoving(true)
+    setMoveError(null)
+    setSelectedDropPiece(null)
+
+    const initialMoveCount = currentGame.moveCount
+
+    try {
+      // 現在のターンに基づいてプレイヤーIDを取得
+      const playerId =
+        currentGame.currentTurn === 'BLACK'
+          ? currentGame.blackPlayerId
+          : currentGame.whitePlayerId
+
+      await api.dropPiece(gameId, {
+        player: playerId,
+        toRow: to.row,
+        toColumn: to.column,
+        pieceType,
+      })
+
+      await waitForProjectionUpdate(initialMoveCount)
+    } catch (err) {
+      setMoveError(err instanceof Error ? err.message : '駒を打つことに失敗しました')
+    } finally {
+      setIsMoving(false)
+    }
+  }
+
+  const waitForProjectionUpdate = async (initialMoveCount: number) => {
+    let retries = 0
+    const maxRetries = 20
+    let updated = false
+
+    while (retries < maxRetries && !updated) {
+      await new Promise(resolve => setTimeout(resolve, 200))
+      await fetchGame(gameId!)
+
+      const state = useGameStore.getState()
+      if (state.currentGame && state.currentGame.moveCount > initialMoveCount) {
+        updated = true
+        break
+      }
+      retries++
+    }
+
+    if (!updated) {
+      setMoveError('盤面の更新に時間がかかっています。ページをリロードしてください。')
+    }
+  }
+
+  const handlePieceSelect = (pieceType: PieceType) => {
+    if (selectedDropPiece === pieceType) {
+      setSelectedDropPiece(null) // Deselect
+    } else {
+      setSelectedDropPiece(pieceType)
     }
   }
 
@@ -171,27 +215,34 @@ export function GameDetailPage() {
           <div className="info-section">
             <h3>持ち駒</h3>
             <div className="captured-pieces">
-              <div className="captured-section">
-                <h4>先手の持ち駒</h4>
-                <div className="captured-list">
-                  {currentGame.blackCapturedPieces.length > 0 ? (
-                    currentGame.blackCapturedPieces.join(', ')
-                  ) : (
-                    <span className="empty">なし</span>
-                  )}
-                </div>
-              </div>
-              <div className="captured-section">
-                <h4>後手の持ち駒</h4>
-                <div className="captured-list">
-                  {currentGame.whiteCapturedPieces.length > 0 ? (
-                    currentGame.whiteCapturedPieces.join(', ')
-                  ) : (
-                    <span className="empty">なし</span>
-                  )}
-                </div>
-              </div>
+              <Hand
+                pieces={currentGame.blackCapturedPieces}
+                playerColor="BLACK"
+                isActive={currentGame.status === 'IN_PROGRESS' && currentGame.currentTurn === 'BLACK'}
+                onPieceSelect={handlePieceSelect}
+                selectedPiece={selectedDropPiece}
+              />
+              <Hand
+                pieces={currentGame.whiteCapturedPieces}
+                playerColor="WHITE"
+                isActive={currentGame.status === 'IN_PROGRESS' && currentGame.currentTurn === 'WHITE'}
+                onPieceSelect={handlePieceSelect}
+                selectedPiece={selectedDropPiece}
+              />
             </div>
+            {selectedDropPiece && (
+              <div style={{
+                marginTop: '10px',
+                padding: '10px',
+                backgroundColor: '#fff3cd',
+                border: '1px solid #ffc107',
+                borderRadius: '4px',
+                textAlign: 'center',
+                fontSize: '14px'
+              }}>
+                💡 盤面の空いているマスをクリックして駒を打ってください
+              </div>
+            )}
           </div>
         </div>
 
@@ -243,8 +294,11 @@ export function GameDetailPage() {
           <Board
             boardState={currentGame.boardState}
             onMove={handleMove}
+            onDrop={handleDrop}
             interactive={currentGame.status === 'IN_PROGRESS'}
             currentTurn={currentGame.currentTurn}
+            dropMode={!!selectedDropPiece}
+            dropPieceType={selectedDropPiece}
           />
         </div>
       </div>
