@@ -24,6 +24,8 @@ public class GameQueryDto {
     private Integer moveCount;
     private Instant createdAt;
     private Instant updatedAt;
+    private Boolean blackInCheck;
+    private Boolean whiteInCheck;
 
     @Data
     @NoArgsConstructor

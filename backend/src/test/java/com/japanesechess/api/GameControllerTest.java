@@ -66,9 +66,10 @@ class GameControllerTest {
     @Test
     void makeMove_ShouldReturn200_WhenValidRequest() throws Exception {
         UUID gameId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
 
         MovePieceRequest request = new MovePieceRequest(
-            PlayerColor.BLACK,
+            playerId,
             6, 4,
             5, 4,
             PieceType.PAWN,
@@ -85,8 +86,9 @@ class GameControllerTest {
     @Test
     void resignGame_ShouldReturn200_WhenValidRequest() throws Exception {
         UUID gameId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
 
-        ResignGameRequest request = new ResignGameRequest(PlayerColor.BLACK);
+        ResignGameRequest request = new ResignGameRequest(playerId);
 
         mockMvc.perform(post("/api/games/" + gameId + "/resign")
                 .contentType(MediaType.APPLICATION_JSON)

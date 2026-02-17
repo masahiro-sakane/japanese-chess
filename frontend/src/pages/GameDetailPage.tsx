@@ -351,6 +351,20 @@ export function GameDetailPage() {
                 <div style={{ fontSize: '14px', color: '#666' }}>
                   手数: {currentGame.moveCount}
                 </div>
+                {(currentGame.blackInCheck || currentGame.whiteInCheck) && (
+                  <div style={{
+                    marginTop: '10px',
+                    padding: '10px',
+                    backgroundColor: '#f8d7da',
+                    border: '2px solid #dc3545',
+                    borderRadius: '4px',
+                    color: '#721c24',
+                    fontWeight: 'bold',
+                    fontSize: '18px'
+                  }}>
+                    ⚠️ 王手! ({currentGame.blackInCheck ? '先手' : '後手'}の玉が狙われています)
+                  </div>
+                )}
               </div>
 
               <div style={{ marginBottom: '20px', textAlign: 'center' }}>

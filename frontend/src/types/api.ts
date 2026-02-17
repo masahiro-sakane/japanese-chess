@@ -37,6 +37,8 @@ export interface GameQueryDto {
   moveCount: number
   createdAt: string
   updatedAt: string
+  blackInCheck: boolean
+  whiteInCheck: boolean
 }
 
 export interface MoveHistoryDto {

@@ -5,6 +5,8 @@ import java.util.Optional;
 
 public class MoveValidator {
 
+    private final CheckDetector checkDetector = new CheckDetector();
+
     public boolean isValidMove(Board board, Move move) {
         if (move.isDrop()) {
             return isValidDrop(board, move);
@@ -34,6 +36,11 @@ public class MoveValidator {
         }
 
         if (!move.isPromote() && piece.mustPromoteAt(move.getTo())) {
+            return false;
+        }
+
+        // Check: Move must not leave own king in check
+        if (checkDetector.wouldBeInCheckAfterMove(board, move)) {
             return false;
         }
 
