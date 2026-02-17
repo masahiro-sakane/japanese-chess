@@ -7,6 +7,7 @@ import com.japanesechess.command.ResignGameCommand;
 import com.japanesechess.domain.PieceType;
 import com.japanesechess.domain.PlayerColor;
 import com.japanesechess.domain.Position;
+import com.japanesechess.projection.GameProjectionHandler;
 import com.japanesechess.repository.GameRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,11 +28,14 @@ class GameCommandHandlerTest {
     @Mock
     private GameRepository gameRepository;
 
+    @Mock
+    private GameProjectionHandler projectionHandler;
+
     private GameCommandHandler commandHandler;
 
     @BeforeEach
     void setUp() {
-        commandHandler = new GameCommandHandler(gameRepository);
+        commandHandler = new GameCommandHandler(gameRepository, projectionHandler);
     }
 
     @Test

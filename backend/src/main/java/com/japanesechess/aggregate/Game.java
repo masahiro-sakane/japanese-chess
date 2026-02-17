@@ -41,11 +41,6 @@ public class Game {
     }
 
     public void makeMove(Move move) {
-        System.out.println("=== DEBUG makeMove ===");
-        System.out.println("Move player: " + move.getPlayer());
-        System.out.println("Current turn: " + currentTurn);
-        System.out.println("Game status: " + status);
-
         validateGameState();
         validatePlayerTurn(move.getPlayer());
 

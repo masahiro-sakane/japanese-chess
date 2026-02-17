@@ -147,6 +147,19 @@ export function GameDetailPage() {
   ) => {
     if (!currentGame || !gameId) return
 
+    // 二歩チェック: 歩兵を打つ場合、同じ列に自分の歩兵がないか確認
+    if (pieceType === 'PAWN') {
+      const currentPlayer = currentGame.currentTurn
+      const hasPawnInColumn = currentGame.boardState.some(
+        (p) => p.type === 'PAWN' && p.owner === currentPlayer && p.column === to.column
+      )
+      if (hasPawnInColumn) {
+        setMoveError('二歩です。同じ列に歩兵がある場所には歩兵を打てません。')
+        setSelectedDropPiece(null)
+        return
+      }
+    }
+
     setIsMoving(true)
     setMoveError(null)
     setSelectedDropPiece(null)
@@ -588,6 +601,17 @@ export function GameDetailPage() {
             currentTurn={currentGame.currentTurn}
             dropMode={!!selectedDropPiece}
             dropPieceType={selectedDropPiece}
+            invalidDropColumns={
+              selectedDropPiece === 'PAWN'
+                ? currentGame.boardState
+                    .filter(
+                      (p) =>
+                        p.type === 'PAWN' &&
+                        p.owner === currentGame.currentTurn
+                    )
+                    .map((p) => p.column)
+                : []
+            }
           />
         </div>
       </div>

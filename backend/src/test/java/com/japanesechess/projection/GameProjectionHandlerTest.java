@@ -526,7 +526,7 @@ class GameProjectionHandlerTest {
         existingView.setBoardState("invalid json");
         when(gameViewRepository.findById(gameId)).thenReturn(Optional.of(existingView));
 
-        when(objectMapper.readValue(anyString(), any(CollectionType.class)))
+        lenient().when(objectMapper.readValue(anyString(), any(CollectionType.class)))
                 .thenThrow(new com.fasterxml.jackson.core.JsonProcessingException("Test error") {});
 
         // When & Then
@@ -551,7 +551,7 @@ class GameProjectionHandlerTest {
         existingView.setBlackCapturedPieces("invalid json");
         when(gameViewRepository.findById(gameId)).thenReturn(Optional.of(existingView));
 
-        when(objectMapper.readValue(anyString(), any(CollectionType.class)))
+        lenient().when(objectMapper.readValue(anyString(), any(CollectionType.class)))
                 .thenThrow(new com.fasterxml.jackson.core.JsonProcessingException("Test error") {});
 
         // When & Then
