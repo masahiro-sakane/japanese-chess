@@ -6,19 +6,28 @@ import com.japanesechess.command.DropPieceCommand;
 import com.japanesechess.command.MovePieceCommand;
 import com.japanesechess.command.ResignGameCommand;
 import com.japanesechess.domain.Move;
+import com.japanesechess.event.DomainEvent;
+import com.japanesechess.event.GameCreatedEvent;
+import com.japanesechess.event.GameEndedEvent;
+import com.japanesechess.event.PieceDroppedEvent;
+import com.japanesechess.event.PieceMovedEvent;
+import com.japanesechess.projection.GameProjectionHandler;
 import com.japanesechess.repository.GameRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
 public class GameCommandHandler {
 
     private final GameRepository gameRepository;
+    private final GameProjectionHandler projectionHandler;
 
-    public GameCommandHandler(GameRepository gameRepository) {
+    public GameCommandHandler(GameRepository gameRepository, GameProjectionHandler projectionHandler) {
         this.gameRepository = gameRepository;
+        this.projectionHandler = projectionHandler;
     }
 
     @Transactional
@@ -29,7 +38,9 @@ public class GameCommandHandler {
             command.getWhitePlayerId()
         );
 
+        List<DomainEvent> newEvents = game.getUncommittedEvents();
         gameRepository.save(game);
+        applyProjections(newEvents);
         return command.getGameId();
     }
 
@@ -56,7 +67,9 @@ public class GameCommandHandler {
         }
 
         game.makeMove(move);
+        List<DomainEvent> newEvents = game.getUncommittedEvents();
         gameRepository.save(game);
+        applyProjections(newEvents);
     }
 
     @Transactional
@@ -71,7 +84,9 @@ public class GameCommandHandler {
         );
 
         game.makeMove(move);
+        List<DomainEvent> newEvents = game.getUncommittedEvents();
         gameRepository.save(game);
+        applyProjections(newEvents);
     }
 
     @Transactional
@@ -80,6 +95,20 @@ public class GameCommandHandler {
             .orElseThrow(() -> new IllegalArgumentException("Game not found: " + command.getGameId()));
 
         game.resign(command.getPlayer());
+        List<DomainEvent> newEvents = game.getUncommittedEvents();
         gameRepository.save(game);
+        applyProjections(newEvents);
+    }
+
+    private void applyProjections(List<DomainEvent> events) {
+        for (DomainEvent event : events) {
+            switch (event) {
+                case GameCreatedEvent e -> projectionHandler.handle(e);
+                case PieceMovedEvent e -> projectionHandler.handle(e);
+                case PieceDroppedEvent e -> projectionHandler.handle(e);
+                case GameEndedEvent e -> projectionHandler.handle(e);
+                default -> { /* unknown event type, skip */ }
+            }
+        }
     }
 }

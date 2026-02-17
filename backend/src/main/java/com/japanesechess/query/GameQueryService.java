@@ -146,7 +146,9 @@ public class GameQueryService {
             PlayerColor owner = PlayerColor.valueOf(dto.getOwner());
 
             Piece piece = new Piece(pieceType, owner, position);
-            if (dto.getPromoted()) {
+            // Only call promote() if the piece type is not already a promoted type
+            // Promoted types (PROMOTED_BISHOP, etc.) are already in promoted state
+            if (dto.getPromoted() && !pieceType.isPromoted()) {
                 piece = piece.promote();
             }
 

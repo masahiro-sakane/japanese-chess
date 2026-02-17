@@ -232,7 +232,8 @@ public class GameProjectionHandler {
                 PlayerColor owner = PlayerColor.valueOf(dto.owner);
 
                 Piece piece = new Piece(pieceType, owner, position);
-                if (dto.promoted) {
+                // Only call promote() if the piece type is not already a promoted type
+                if (dto.promoted && !pieceType.isPromoted()) {
                     piece = piece.promote();
                 }
 

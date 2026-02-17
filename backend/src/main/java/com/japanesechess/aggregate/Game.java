@@ -113,12 +113,10 @@ public class Game {
                 this.status = GameStatus.IN_PROGRESS;
             }
             case PieceMovedEvent e -> {
-                this.board = board.applyMove(Move.normalMove(
-                    e.getFrom(),
-                    e.getTo(),
-                    e.getPieceType(),
-                    e.getPlayer()
-                ).withCapturedPiece(e.getCapturedPiece()));
+                Move replayMove = e.isPromoted()
+                    ? Move.promoteMove(e.getFrom(), e.getTo(), e.getPieceType(), e.getPlayer())
+                    : Move.normalMove(e.getFrom(), e.getTo(), e.getPieceType(), e.getPlayer());
+                this.board = board.applyMove(replayMove.withCapturedPiece(e.getCapturedPiece()));
                 this.currentTurn = currentTurn.opposite();
             }
             case PieceDroppedEvent e -> {
