@@ -12,6 +12,7 @@ export function GameDetailPage() {
   const [moveError, setMoveError] = useState<string | null>(null)
   const [isMoving, setIsMoving] = useState(false)
   const [selectedDropPiece, setSelectedDropPiece] = useState<PieceType | null>(null)
+  const [showResignDialog, setShowResignDialog] = useState(false)
 
   useEffect(() => {
     if (gameId) {
@@ -128,6 +129,31 @@ export function GameDetailPage() {
     }
   }
 
+  const handleResign = async () => {
+    if (!currentGame || !gameId) return
+
+    setIsMoving(true)
+    setMoveError(null)
+    setShowResignDialog(false)
+
+    try {
+      // 現在のターンに基づいてプレイヤーIDを取得
+      const playerId =
+        currentGame.currentTurn === 'BLACK'
+          ? currentGame.blackPlayerId
+          : currentGame.whitePlayerId
+
+      await api.resignGame(gameId, playerId)
+
+      // Fetch updated game state
+      await fetchGame(gameId)
+    } catch (err) {
+      setMoveError(err instanceof Error ? err.message : '投了に失敗しました')
+    } finally {
+      setIsMoving(false)
+    }
+  }
+
   if (loading && !currentGame) {
     return <div className="loading">読み込み中...</div>
   }
@@ -158,6 +184,66 @@ export function GameDetailPage() {
 
   return (
     <div className="page game-detail-page">
+      {showResignDialog && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '30px',
+            borderRadius: '8px',
+            maxWidth: '400px',
+            width: '90%',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>投了の確認</h3>
+            <p style={{ marginBottom: '20px', lineHeight: '1.6' }}>
+              本当に投了しますか？<br />
+              {currentGame?.currentTurn === 'BLACK' ? '先手' : '後手'}の負けとなります。
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowResignDialog(false)}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleResign}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  backgroundColor: '#dc3545',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                投了する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="game-detail-header">
         <Link to="/" className="back-link">
           ← 対局一覧に戻る
@@ -250,21 +336,42 @@ export function GameDetailPage() {
           <h3>盤面</h3>
 
           {currentGame.status === 'IN_PROGRESS' && (
-            <div style={{
-              padding: '20px',
-              marginBottom: '20px',
-              backgroundColor: currentGame.currentTurn === 'BLACK' ? '#fff3cd' : '#d1ecf1',
-              border: `3px solid ${currentGame.currentTurn === 'BLACK' ? '#ffc107' : '#17a2b8'}`,
-              borderRadius: '8px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
-                {currentGame.currentTurn === 'BLACK' ? '⚫ 先手の番' : '⚪ 後手の番'}
+            <>
+              <div style={{
+                padding: '20px',
+                marginBottom: '20px',
+                backgroundColor: currentGame.currentTurn === 'BLACK' ? '#fff3cd' : '#d1ecf1',
+                border: `3px solid ${currentGame.currentTurn === 'BLACK' ? '#ffc107' : '#17a2b8'}`,
+                borderRadius: '8px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
+                  {currentGame.currentTurn === 'BLACK' ? '⚫ 先手の番' : '⚪ 後手の番'}
+                </div>
+                <div style={{ fontSize: '14px', color: '#666' }}>
+                  手数: {currentGame.moveCount}
+                </div>
               </div>
-              <div style={{ fontSize: '14px', color: '#666' }}>
-                手数: {currentGame.moveCount}
+
+              <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+                <button
+                  onClick={() => setShowResignDialog(true)}
+                  disabled={isMoving}
+                  style={{
+                    padding: '10px 20px',
+                    fontSize: '16px',
+                    backgroundColor: '#dc3545',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: isMoving ? 'not-allowed' : 'pointer',
+                    opacity: isMoving ? 0.6 : 1
+                  }}
+                >
+                  投了する (Resign)
+                </button>
               </div>
-            </div>
+            </>
           )}
 
           {moveError && (
