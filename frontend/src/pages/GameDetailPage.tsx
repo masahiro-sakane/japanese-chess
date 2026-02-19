@@ -1,18 +1,24 @@
-import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useEffect, useState, useCallback } from 'react'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
 import { Board } from '../components/Board'
 import { Hand } from '../components/Hand'
 import { api } from '../services/api'
+import type { AiDifficulty, PlayerColor } from '../services/api'
 import type { GameQueryDto, PieceType } from '../types/api'
 import { useGameWebSocket } from '../hooks/useGameWebSocket'
 
 export function GameDetailPage() {
   const { gameId } = useParams<{ gameId: string }>()
+  const [searchParams] = useSearchParams()
   const { currentGame, loading, error, fetchGame, clearError } = useGameStore()
   const [moveError, setMoveError] = useState<string | null>(null)
   const [isMoving, setIsMoving] = useState(false)
   const [selectedDropPiece, setSelectedDropPiece] = useState<PieceType | null>(null)
+
+  const aiColor = searchParams.get('aiColor') as PlayerColor | null
+  const difficulty = searchParams.get('difficulty') as AiDifficulty | null
+  const isAiGame = aiColor !== null && difficulty !== null
   const [showResignDialog, setShowResignDialog] = useState(false)
   const [showPromotionDialog, setShowPromotionDialog] = useState(false)
   const [pendingMove, setPendingMove] = useState<{
@@ -21,6 +27,17 @@ export function GameDetailPage() {
     piece: any
     playerId: string
   } | null>(null)
+
+  const triggerAiMove = useCallback(async () => {
+    if (!gameId || !aiColor || !difficulty) return
+
+    try {
+      await api.makeAiMove(gameId, { aiColor, difficulty })
+      await fetchGame(gameId)
+    } catch (err) {
+      setMoveError(err instanceof Error ? err.message : 'AIの手の実行に失敗しました')
+    }
+  }, [gameId, aiColor, difficulty, fetchGame])
 
   useEffect(() => {
     if (gameId) {
@@ -124,6 +141,10 @@ export function GameDetailPage() {
       })
       // Fallback fetch in case WebSocket is unavailable
       await fetchGame(gameId)
+
+      if (isAiGame) {
+        await triggerAiMove()
+      }
     } catch (err) {
       setMoveError(err instanceof Error ? err.message : '駒の移動に失敗しました')
     } finally {
@@ -183,6 +204,10 @@ export function GameDetailPage() {
       })
       // Fallback fetch in case WebSocket is unavailable
       await fetchGame(gameId)
+
+      if (isAiGame) {
+        await triggerAiMove()
+      }
     } catch (err) {
       setMoveError(err instanceof Error ? err.message : '駒を打つことに失敗しました')
     } finally {
@@ -383,7 +408,19 @@ export function GameDetailPage() {
         <Link to="/" className="back-link">
           ← 対局一覧に戻る
         </Link>
-        <h2>対局詳細</h2>
+        <h2>{isAiGame ? 'AI対局' : '対局詳細'}</h2>
+        {isAiGame && (
+          <span style={{
+            padding: '4px 12px',
+            backgroundColor: '#28a745',
+            color: 'white',
+            borderRadius: '12px',
+            fontSize: '13px',
+            fontWeight: 'bold',
+          }}>
+            AI対局 ({difficulty === 'BEGINNER' ? '初級' : difficulty === 'INTERMEDIATE' ? '中級' : '上級'})
+          </span>
+        )}
         {currentGame.moveCount > 0 && (
           <Link to={`/replay/${currentGame.gameId}`} className="replay-link">
             棋譜再生 (Replay) →
@@ -569,14 +606,19 @@ export function GameDetailPage() {
               marginBottom: '10px',
               borderRadius: '4px'
             }}>
-              駒を移動中...
+              {isAiGame && currentGame?.currentTurn === aiColor
+                ? 'AIが考えています...'
+                : '駒を移動中...'}
             </div>
           )}
           <Board
             boardState={currentGame.boardState}
             onMove={handleMove}
             onDrop={handleDrop}
-            interactive={currentGame.status === 'IN_PROGRESS'}
+            interactive={
+              currentGame.status === 'IN_PROGRESS' &&
+              (!isAiGame || currentGame.currentTurn !== aiColor)
+            }
             currentTurn={currentGame.currentTurn}
             dropMode={!!selectedDropPiece}
             dropPieceType={selectedDropPiece}
