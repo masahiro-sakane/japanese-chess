@@ -12,6 +12,14 @@ export function Layout() {
             <Link to="/" className="nav-link">
               対局一覧
             </Link>
+            <Link to="/create-ai" className="nav-link" style={{
+              backgroundColor: '#28a745',
+              color: 'white',
+              padding: '6px 14px',
+              borderRadius: '4px',
+            }}>
+              AI対局
+            </Link>
             <Link to="/statistics" className="nav-link">
               統計
             </Link>

@@ -79,6 +79,19 @@ export function GameList() {
             {isClearing ? 'クリア中...' : 'すべてクリア'}
           </button>
           <Link
+            to="/create-ai"
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#17a2b8',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '4px',
+              fontWeight: 'bold',
+            }}
+          >
+            AI対局
+          </Link>
+          <Link
             to="/create"
             style={{
               padding: '8px 16px',
