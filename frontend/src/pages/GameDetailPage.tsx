@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
 import { Board } from '../components/Board'
 import { Hand } from '../components/Hand'
+import { AiThinkingIndicator } from '../components/AiThinkingIndicator'
 import { api } from '../services/api'
 import type { GameQueryDto, PieceType } from '../types/api'
 import { useGameWebSocket } from '../hooks/useGameWebSocket'
@@ -497,6 +498,9 @@ export function GameDetailPage() {
 
           {currentGame.status === 'IN_PROGRESS' && (
             <>
+              {currentGame.aiGame && currentGame.currentTurn === 'WHITE' && (
+                <AiThinkingIndicator difficulty={currentGame.aiDifficulty} />
+              )}
               <div style={{
                 padding: '20px',
                 marginBottom: '20px',
@@ -506,7 +510,9 @@ export function GameDetailPage() {
                 textAlign: 'center'
               }}>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
-                  {currentGame.currentTurn === 'BLACK' ? '⚫ 先手の番' : '⚪ 後手の番'}
+                  {currentGame.currentTurn === 'BLACK'
+                    ? '⚫ 先手の番'
+                    : currentGame.aiGame ? '⚪ AIの番' : '⚪ 後手の番'}
                 </div>
                 <div style={{ fontSize: '14px', color: '#666' }}>
                   手数: {currentGame.moveCount}
@@ -576,7 +582,10 @@ export function GameDetailPage() {
             boardState={currentGame.boardState}
             onMove={handleMove}
             onDrop={handleDrop}
-            interactive={currentGame.status === 'IN_PROGRESS'}
+            interactive={
+              currentGame.status === 'IN_PROGRESS' &&
+              !(currentGame.aiGame && currentGame.currentTurn === 'WHITE')
+            }
             currentTurn={currentGame.currentTurn}
             dropMode={!!selectedDropPiece}
             dropPieceType={selectedDropPiece}

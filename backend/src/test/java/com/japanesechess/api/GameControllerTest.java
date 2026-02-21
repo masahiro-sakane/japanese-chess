@@ -46,10 +46,9 @@ class GameControllerTest {
         UUID gameId = UUID.randomUUID();
         when(commandHandler.handle(any(CreateGameCommand.class))).thenReturn(gameId);
 
-        CreateGameRequest request = new CreateGameRequest(
-            UUID.randomUUID(),
-            UUID.randomUUID()
-        );
+        CreateGameRequest request = new CreateGameRequest();
+        request.setBlackPlayerId(UUID.randomUUID());
+        request.setWhitePlayerId(UUID.randomUUID().toString());
 
         mockMvc.perform(post("/api/games")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -61,7 +60,9 @@ class GameControllerTest {
 
     @Test
     void createGame_ShouldReturn400_WhenInvalidRequest() throws Exception {
-        CreateGameRequest request = new CreateGameRequest(null, null);
+        CreateGameRequest request = new CreateGameRequest();
+        request.setBlackPlayerId(null);
+        request.setWhitePlayerId(null);
 
         mockMvc.perform(post("/api/games")
                 .contentType(MediaType.APPLICATION_JSON)

@@ -41,6 +41,12 @@ public class GameEntity {
     @Column(name = "end_reason", length = 20)
     private String endReason;
 
+    @Column(name = "is_ai_game", nullable = false)
+    private Boolean isAiGame = false;
+
+    @Column(name = "ai_difficulty", length = 20)
+    private String aiDifficulty;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

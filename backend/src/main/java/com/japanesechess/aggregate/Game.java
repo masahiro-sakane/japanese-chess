@@ -40,6 +40,14 @@ public class Game {
         return game;
     }
 
+    public static Game createWithAi(UUID gameId, UUID blackPlayerId, UUID whitePlayerId, AiDifficulty aiDifficulty) {
+        Game game = new Game();
+        GameCreatedEvent event = new GameCreatedEvent(gameId, blackPlayerId, whitePlayerId, aiDifficulty);
+        game.apply(event);
+        game.uncommittedEvents.add(event);
+        return game;
+    }
+
     public void makeMove(Move move) {
         validateGameState();
         validatePlayerTurn(move.getPlayer());

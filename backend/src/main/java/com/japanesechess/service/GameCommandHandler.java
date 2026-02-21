@@ -1,6 +1,8 @@
 package com.japanesechess.service;
 
 import com.japanesechess.aggregate.Game;
+import com.japanesechess.ai.AiGameRegistry;
+import com.japanesechess.ai.AiMoveScheduler;
 import com.japanesechess.command.CreateGameCommand;
 import com.japanesechess.command.DropPieceCommand;
 import com.japanesechess.command.MovePieceCommand;
@@ -14,8 +16,12 @@ import com.japanesechess.event.PieceMovedEvent;
 import com.japanesechess.projection.GameProjectionHandler;
 import com.japanesechess.repository.GameRepository;
 import com.japanesechess.websocket.GameWebSocketNotifier;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,20 +32,42 @@ public class GameCommandHandler {
     private final GameRepository gameRepository;
     private final GameProjectionHandler projectionHandler;
     private final GameWebSocketNotifier webSocketNotifier;
+    private final AiGameRegistry aiGameRegistry;
 
-    public GameCommandHandler(GameRepository gameRepository, GameProjectionHandler projectionHandler, GameWebSocketNotifier webSocketNotifier) {
+    @Lazy
+    @Autowired
+    private AiMoveScheduler aiMoveScheduler;
+
+    public GameCommandHandler(
+        GameRepository gameRepository,
+        GameProjectionHandler projectionHandler,
+        GameWebSocketNotifier webSocketNotifier,
+        AiGameRegistry aiGameRegistry
+    ) {
         this.gameRepository = gameRepository;
         this.projectionHandler = projectionHandler;
         this.webSocketNotifier = webSocketNotifier;
+        this.aiGameRegistry = aiGameRegistry;
     }
 
     @Transactional
     public UUID handle(CreateGameCommand command) {
-        Game game = Game.create(
-            command.getGameId(),
-            command.getBlackPlayerId(),
-            command.getWhitePlayerId()
-        );
+        Game game;
+        if (command.isAiGame() && command.getAiDifficulty() != null) {
+            game = Game.createWithAi(
+                command.getGameId(),
+                command.getBlackPlayerId(),
+                command.getWhitePlayerId(),
+                command.getAiDifficulty()
+            );
+            aiGameRegistry.register(command.getGameId(), command.getAiDifficulty());
+        } else {
+            game = Game.create(
+                command.getGameId(),
+                command.getBlackPlayerId(),
+                command.getWhitePlayerId()
+            );
+        }
 
         List<DomainEvent> newEvents = game.getUncommittedEvents();
         gameRepository.save(game);
@@ -75,6 +103,8 @@ public class GameCommandHandler {
         gameRepository.save(game);
         applyProjections(newEvents);
         webSocketNotifier.notifyGameUpdated(command.getGameId());
+
+        scheduleAiMoveIfNeeded(command.getGameId(), game);
     }
 
     @Transactional
@@ -93,6 +123,8 @@ public class GameCommandHandler {
         gameRepository.save(game);
         applyProjections(newEvents);
         webSocketNotifier.notifyGameUpdated(command.getGameId());
+
+        scheduleAiMoveIfNeeded(command.getGameId(), game);
     }
 
     @Transactional
@@ -105,6 +137,48 @@ public class GameCommandHandler {
         gameRepository.save(game);
         applyProjections(newEvents);
         webSocketNotifier.notifyGameUpdated(command.getGameId());
+
+        if (game.getStatus() == Game.GameStatus.ENDED) {
+            aiGameRegistry.unregister(command.getGameId());
+        }
+    }
+
+    @Transactional
+    public void handleAiMove(UUID gameId, Move move) {
+        Game game = gameRepository.findById(gameId)
+            .orElseThrow(() -> new IllegalArgumentException("Game not found: " + gameId));
+
+        game.makeMove(move);
+        List<DomainEvent> newEvents = game.getUncommittedEvents();
+        gameRepository.save(game);
+        applyProjections(newEvents);
+
+        if (game.getStatus() == Game.GameStatus.ENDED) {
+            aiGameRegistry.unregister(gameId);
+        }
+    }
+
+    // @Async スレッドから呼ばれるため @Transactional の外でWebSocket通知を送る
+    public void notifyAfterAiMove(UUID gameId) {
+        webSocketNotifier.notifyGameUpdated(gameId);
+    }
+
+    private void scheduleAiMoveIfNeeded(UUID gameId, Game game) {
+        if (game.getStatus() == Game.GameStatus.IN_PROGRESS
+            && aiGameRegistry.isAiGame(gameId)) {
+            // トランザクションのコミット後にAIの手を実行する
+            // コミット前に実行すると、AIが古い盤面状態を読み込んでしまうため
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        aiMoveScheduler.scheduleAiMove(gameId);
+                    }
+                });
+            } else {
+                aiMoveScheduler.scheduleAiMove(gameId);
+            }
+        }
     }
 
     private void applyProjections(List<DomainEvent> events) {

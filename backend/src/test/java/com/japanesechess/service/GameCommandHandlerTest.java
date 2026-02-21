@@ -1,6 +1,7 @@
 package com.japanesechess.service;
 
 import com.japanesechess.aggregate.Game;
+import com.japanesechess.ai.AiGameRegistry;
 import com.japanesechess.command.CreateGameCommand;
 import com.japanesechess.command.MovePieceCommand;
 import com.japanesechess.command.ResignGameCommand;
@@ -35,11 +36,14 @@ class GameCommandHandlerTest {
     @Mock
     private GameWebSocketNotifier webSocketNotifier;
 
+    @Mock
+    private AiGameRegistry aiGameRegistry;
+
     private GameCommandHandler commandHandler;
 
     @BeforeEach
     void setUp() {
-        commandHandler = new GameCommandHandler(gameRepository, projectionHandler, webSocketNotifier);
+        commandHandler = new GameCommandHandler(gameRepository, projectionHandler, webSocketNotifier, aiGameRegistry);
     }
 
     @Test

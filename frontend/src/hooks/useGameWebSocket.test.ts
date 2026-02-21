@@ -45,6 +45,9 @@ describe('useGameWebSocket', () => {
     updatedAt: '2024-01-01T00:01:00Z',
     blackInCheck: false,
     whiteInCheck: false,
+    aiGame: false,
+    aiDifficulty: null,
+    aiThinking: false,
   }
 
   beforeEach(() => {

@@ -1,46 +1,48 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { gameService } from '../services/gameService'
+import { AiDifficultySelector } from '../components/AiDifficultySelector'
+import type { AiDifficulty } from '../types/api'
 
 export const CreateGamePage: React.FC = () => {
   const navigate = useNavigate()
-  const [blackPlayerId, setBlackPlayerId] = useState(() => crypto.randomUUID())
-  const [whitePlayerId, setWhitePlayerId] = useState(() => crypto.randomUUID())
+  const [blackPlayerId, setBlackPlayerId] = useState<string>(() => crypto.randomUUID())
+  const [whitePlayerId] = useState<string>(() => crypto.randomUUID())
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isAiGame, setIsAiGame] = useState(false)
+  const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>('BEGINNER')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
 
+    const effectiveWhitePlayerId = isAiGame ? 'AI_PLAYER' : whitePlayerId
+
     try {
       const response = await gameService.createGame({
         blackPlayerId,
-        whitePlayerId,
+        whitePlayerId: effectiveWhitePlayerId,
+        aiGame: isAiGame,
+        aiDifficulty: isAiGame ? aiDifficulty : undefined,
       })
 
-      // Projectionの更新を待つ（ポーリング）
       let retries = 0
       const maxRetries = 20
       let gameFound = false
 
       while (retries < maxRetries && !gameFound) {
         await new Promise(resolve => setTimeout(resolve, 300))
-
         try {
-          // ゲームが取得できるか確認
           const checkResponse = await fetch(`http://localhost:8080/api/queries/games/${response.gameId}`)
           if (checkResponse.ok) {
             gameFound = true
-            console.log(`✅ Game found after ${retries + 1} attempts`)
           }
         } catch {
-          // ゲームがまだ見つからない
+          // game not found yet
         }
-
         retries++
-        console.log(`⏳ Waiting for game projection... (${retries}/${maxRetries})`)
       }
 
       if (!gameFound) {
@@ -55,8 +57,23 @@ export const CreateGamePage: React.FC = () => {
     }
   }
 
-  const generateRandomId = () => {
-    return crypto.randomUUID()
+  const generateRandomId = () => crypto.randomUUID()
+
+  const inputStyle: React.CSSProperties = {
+    flex: 1,
+    padding: '8px',
+    border: '1px solid #ccc',
+    borderRadius: '4px',
+    fontFamily: 'monospace',
+  }
+
+  const buttonSecondaryStyle: React.CSSProperties = {
+    padding: '8px 16px',
+    backgroundColor: '#6c757d',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
   }
 
   return (
@@ -64,75 +81,112 @@ export const CreateGamePage: React.FC = () => {
       <h1>新規対局の作成</h1>
 
       <form onSubmit={handleSubmit}>
+        {/* Game mode selection */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+            対局モード
+          </label>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <label
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px',
+                border: `2px solid ${!isAiGame ? '#007bff' : '#ddd'}`,
+                borderRadius: '6px',
+                cursor: 'pointer',
+                backgroundColor: !isAiGame ? '#e7f3ff' : 'white',
+              }}
+            >
+              <input
+                type="radio"
+                checked={!isAiGame}
+                onChange={() => setIsAiGame(false)}
+                style={{ margin: 0 }}
+              />
+              <div>
+                <div style={{ fontWeight: 'bold' }}>対人戦</div>
+                <div style={{ fontSize: '0.8rem', color: '#666' }}>2人のプレイヤーで対戦</div>
+              </div>
+            </label>
+            <label
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px',
+                border: `2px solid ${isAiGame ? '#007bff' : '#ddd'}`,
+                borderRadius: '6px',
+                cursor: 'pointer',
+                backgroundColor: isAiGame ? '#e7f3ff' : 'white',
+              }}
+            >
+              <input
+                type="radio"
+                checked={isAiGame}
+                onChange={() => setIsAiGame(true)}
+                style={{ margin: 0 }}
+              />
+              <div>
+                <div style={{ fontWeight: 'bold' }}>AI対戦</div>
+                <div style={{ fontSize: '0.8rem', color: '#666' }}>AIと対戦 (あなたは先手)</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* AI difficulty (shown only for AI game) */}
+        {isAiGame && (
+          <div style={{ marginBottom: '24px' }}>
+            <AiDifficultySelector
+              difficulty={aiDifficulty}
+              onChange={setAiDifficulty}
+              disabled={isLoading}
+            />
+          </div>
+        )}
+
+        {/* Player IDs */}
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-            先手（黒）プレイヤーID
+            先手（あなた）プレイヤーID
           </label>
           <div style={{ display: 'flex', gap: '10px' }}>
             <input
               type="text"
               value={blackPlayerId}
               onChange={(e) => setBlackPlayerId(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '8px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                fontFamily: 'monospace',
-              }}
+              style={inputStyle}
               required
             />
             <button
               type="button"
               onClick={() => setBlackPlayerId(generateRandomId())}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#6c757d',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
+              style={buttonSecondaryStyle}
             >
               ランダム生成
             </button>
           </div>
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-            後手（白）プレイヤーID
-          </label>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <input
-              type="text"
-              value={whitePlayerId}
-              onChange={(e) => setWhitePlayerId(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '8px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                fontFamily: 'monospace',
-              }}
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setWhitePlayerId(generateRandomId())}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#6c757d',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-              }}
-            >
-              ランダム生成
-            </button>
+        {!isAiGame && (
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+              後手（白）プレイヤーID
+            </label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <input
+                type="text"
+                value={whitePlayerId}
+                readOnly
+                style={{ ...inputStyle, backgroundColor: '#f8f9fa' }}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {error && (
           <div
@@ -165,7 +219,7 @@ export const CreateGamePage: React.FC = () => {
               cursor: isLoading ? 'not-allowed' : 'pointer',
             }}
           >
-            {isLoading ? '作成中...' : '対局を開始'}
+            {isLoading ? '作成中...' : isAiGame ? 'AIと対局を開始' : '対局を開始'}
           </button>
 
           <button
@@ -197,9 +251,9 @@ export const CreateGamePage: React.FC = () => {
       >
         <h3 style={{ marginTop: 0 }}>ヒント</h3>
         <ul style={{ marginBottom: 0 }}>
-          <li>プレイヤーIDはUUID形式で入力してください</li>
-          <li>「ランダム生成」ボタンで自動的にIDを生成できます</li>
-          <li>対局作成後、ゲーム詳細ページに自動的に移動します</li>
+          <li>AI対戦モードでは、あなたが先手（黒）でAIが後手（白）になります</li>
+          <li>難易度が高いほどAIは強くなりますが、応答に時間がかかります</li>
+          <li>対人戦では2ブラウザタブやウィンドウで対戦できます</li>
         </ul>
       </div>
     </div>
