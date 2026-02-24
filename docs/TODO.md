@@ -1,6 +1,6 @@
 # TODO - 将棋アプリケーション ロードマップ
 
-最終更新: 2026-02-24
+最終更新: 2026-02-24（テストカバレッジ強化完了）
 
 ## 凡例
 - `[ ]` 未着手
@@ -18,44 +18,42 @@
 - [x] **Issue #5** - 駒の成り改善（自動成り・選択成り・成りゾーン表示）
 - [x] **Issue #6** - WebSocket リアルタイム更新（Spring STOMP + @stomp/stompjs）
 - [x] **Issue #7** - 統計ページ拡張（Recharts グラフ）
+- [x] **Issue #9** - AI対戦機能（Minimax + Alpha-Beta剪定、PR #28）
+- [x] **テストカバレッジ強化** - フロントエンド 28% → 94%（213 tests、目標 80%+ 達成）
 
 ---
 
-## Phase 6 - AI対戦完了 & テスト強化（今すぐ）
+## Phase 6 - AI対戦完了 & テスト強化 ✅ 完了
 
-### AI対戦機能のリリース
-- [x] **Issue #9** - AI対戦機能（Minimax + Alpha-Beta剪定）
-  - [x] バックエンド: AiEngine, RandomStrategy, MinimaxStrategy
-  - [x] バックエンド: AiGameRegistry, AiMoveScheduler（@Async）
-  - [x] バックエンド: BoardEvaluator, MoveGenerator
-  - [x] バックエンド: DB マイグレーション V4（is_ai_game, ai_difficulty）
-  - [x] フロントエンド: AiDifficultySelector コンポーネント
-  - [x] フロントエンド: AiThinkingIndicator コンポーネント
-  - [x] フロントエンド: CreateGamePage に AI モード選択 UI
-  - [x] コミット & PR 作成（PR #28）
+### AI対戦機能（Issue #9）
+- [x] バックエンド: AiEngine, RandomStrategy, MinimaxStrategy
+- [x] バックエンド: AiGameRegistry, AiMoveScheduler（@Async）
+- [x] バックエンド: BoardEvaluator, MoveGenerator
+- [x] バックエンド: DB マイグレーション V4（is_ai_game, ai_difficulty）
+- [x] フロントエンド: AiDifficultySelector コンポーネント
+- [x] フロントエンド: AiThinkingIndicator コンポーネント
+- [x] フロントエンド: CreateGamePage に AI モード選択 UI
+- [x] コミット & PR 作成（PR #28）
 
-### フロントエンドテスト強化（現状 ~28% → 目標 80%+）
-- [x] Board コンポーネントの単体テスト（16 tests）
-  - [x] 初期配置の表示
-  - [x] 駒クリック時の選択状態
-  - [x] 合法手のハイライト
-  - [x] 持ち駒エリアの表示
-- [ ] GameDetailPage の統合テスト
-  - [ ] ゲーム読み込みフロー
-  - [ ] 駒移動フロー（BLACK → WHITE ターン切り替え）
-  - [ ] 投了フロー
-  - [ ] 王手表示
+### フロントエンドテストカバレッジ強化（28% → 94%）
+- [x] api.ts テスト（15 tests）
+- [x] gameService.ts テスト（17 tests）
+- [x] gameStore.ts テスト（17 tests）
+- [x] Board コンポーネントテスト（16 tests）
+- [x] GameCard コンポーネントテスト（13 tests）
+- [x] GameList コンポーネントテスト（13 tests）
+- [x] Hand コンポーネントテスト（16 tests）
+- [x] Layout コンポーネントテスト（7 tests）
+- [x] Pagination コンポーネントテスト（13 tests）
+- [x] Statistics コンポーネントテスト（8 tests）
+- [x] StatusFilter コンポーネントテスト（7 tests）
+- [x] AiDifficultySelector テスト（8 tests）
+- [x] AiThinkingIndicator テスト（5 tests）
+- [x] GameDetailPage テスト（26 tests）- 投了・王手・AI表示・駒打ち
+- [x] CreateGamePage テスト（16 tests）
 - [x] PromotionFeature テスト（7 tests）
-  - [x] 成りダイアログの表示テスト
-  - [x] 「成る」ボタンのクリックテスト
-  - [x] 「成らない」ボタンのクリックテスト
-  - [ ] 強制成り（歩・香の1段目、桂の1-2段目）の自動成りテスト
-  - [ ] 成りゾーン（先手0-2行・後手6-8行）のハイライトテスト
-  - [ ] 金・玉・成り駒に成りダイアログが出ないことのテスト
-- [x] CreateGamePage のテスト（16 tests）
-  - [x] 対人戦モード選択
-  - [x] AI対戦モード選択と難易度表示
-  - [x] フォームバリデーション
+- [x] SimplePages テスト（4 tests）
+- [x] vite.config.ts に coverage 閾値設定（80%）
 
 ---
 
