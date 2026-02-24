@@ -50,8 +50,12 @@
 - [x] AiDifficultySelector テスト（8 tests）
 - [x] AiThinkingIndicator テスト（5 tests）
 - [x] GameDetailPage テスト（26 tests）- 投了・王手・AI表示・駒打ち
+  - [ ] 駒移動フロー（BLACK → WHITE ターン切り替え）
 - [x] CreateGamePage テスト（16 tests）
 - [x] PromotionFeature テスト（7 tests）
+  - [ ] 強制成り（歩・香の1段目、桂の1-2段目）の自動成りテスト
+  - [ ] 成りゾーン（先手0-2行・後手6-8行）のハイライトテスト
+  - [ ] 金・玉・成り駒に成りダイアログが出ないことのテスト
 - [x] SimplePages テスト（4 tests）
 - [x] vite.config.ts に coverage 閾値設定（80%）
 
