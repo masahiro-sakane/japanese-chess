@@ -39,6 +39,49 @@ interface GameResponse {
   nextTurn?: string
 }
 
+export type AiDifficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
+export type PlayerColor = 'BLACK' | 'WHITE'
+
+export interface CreateAiGameRequest {
+  humanPlayerId: string
+  humanColor: PlayerColor
+  difficulty: AiDifficulty
+}
+
+export interface CreateAiGameResponse {
+  gameId: string
+  status: string
+  message: string
+  aiPlayerId: string
+  humanPlayerId: string
+  humanColor: PlayerColor
+  aiColor: PlayerColor
+  difficulty: AiDifficulty
+  aiFirstMove?: string
+}
+
+export interface AiMoveRequest {
+  aiColor: PlayerColor
+  difficulty: AiDifficulty
+}
+
+export interface AiMoveResponse {
+  success: boolean
+  gameId: string
+  moveDescription?: string
+  isDrop?: boolean
+  aiColor?: PlayerColor
+  difficulty?: AiDifficulty
+  message?: string
+}
+
+export interface AiDifficultyOption {
+  value: AiDifficulty
+  label: string
+}
+
+export const AI_PLAYER_ID = '00000000-0000-0000-0000-000000000001'
+
 export const api = {
   // Game Commands
   createGame: async (request: CreateGameRequest): Promise<GameResponse> => {
@@ -183,6 +226,22 @@ export const api = {
     const response = await axiosInstance.get<string>(
       `/queries/games/${gameId}/replay/kif`
     )
+    return response.data
+  },
+
+  // AI Game Commands
+  createAiGame: async (request: CreateAiGameRequest): Promise<CreateAiGameResponse> => {
+    const response = await axiosInstance.post<CreateAiGameResponse>('/ai/games', request)
+    return response.data
+  },
+
+  makeAiMove: async (gameId: string, request: AiMoveRequest): Promise<AiMoveResponse> => {
+    const response = await axiosInstance.post<AiMoveResponse>(`/ai/games/${gameId}/ai-move`, request)
+    return response.data
+  },
+
+  getAiDifficulties: async (): Promise<AiDifficultyOption[]> => {
+    const response = await axiosInstance.get<AiDifficultyOption[]>('/ai/difficulties')
     return response.data
   },
 }

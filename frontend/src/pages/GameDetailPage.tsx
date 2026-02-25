@@ -31,6 +31,7 @@ export function GameDetailPage() {
   const [moveError, setMoveError] = useState<string | null>(null)
   const [isMoving, setIsMoving] = useState(false)
   const [selectedDropPiece, setSelectedDropPiece] = useState<PieceType | null>(null)
+
   const [showResignDialog, setShowResignDialog] = useState(false)
   const [showPromotionDialog, setShowPromotionDialog] = useState(false)
   const [pendingMove, setPendingMove] = useState<{
