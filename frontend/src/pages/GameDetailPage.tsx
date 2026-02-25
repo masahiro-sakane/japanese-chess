@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
 import { Board } from '../components/Board'
 import { Hand } from '../components/Hand'
@@ -7,9 +7,26 @@ import { AiThinkingIndicator } from '../components/AiThinkingIndicator'
 import { api } from '../services/api'
 import type { GameQueryDto, PieceType } from '../types/api'
 import { useGameWebSocket } from '../hooks/useGameWebSocket'
+import Button from '@atlaskit/button/new'
+import Spinner from '@atlaskit/spinner'
+import SectionMessage, { SectionMessageAction } from '@atlaskit/section-message'
+import Banner from '@atlaskit/banner'
+import Lozenge from '@atlaskit/lozenge'
+import { token } from '@atlaskit/tokens'
+import ModalDialog, {
+  ModalHeader,
+  ModalTitle,
+  ModalBody,
+  ModalFooter,
+} from '@atlaskit/modal-dialog'
+
+const PIECE_NAMES: Record<string, string> = {
+  PAWN: '歩', LANCE: '香', KNIGHT: '桂', SILVER: '銀', BISHOP: '角', ROOK: '飛',
+}
 
 export function GameDetailPage() {
   const { gameId } = useParams<{ gameId: string }>()
+  const navigate = useNavigate()
   const { currentGame, loading, error, fetchGame, clearError } = useGameStore()
   const [moveError, setMoveError] = useState<string | null>(null)
   const [isMoving, setIsMoving] = useState(false)
@@ -33,31 +50,19 @@ export function GameDetailPage() {
     useGameStore.setState({ currentGame: game })
   })
 
-  // 駒が成れるかチェック
   const canPromote = (piece: any, fromRow: number, toRow: number, owner: string): boolean => {
     const promotablePieces = ['PAWN', 'LANCE', 'KNIGHT', 'SILVER', 'BISHOP', 'ROOK']
-    if (!promotablePieces.includes(piece.type)) {
-      return false
-    }
-
-    if (owner === 'BLACK') {
-      // 先手: 敵陣（0-2行目）に入るか、敵陣から出る
-      return toRow <= 2 || fromRow <= 2
-    } else {
-      // 後手: 敵陣（6-8行目）に入るか、敵陣から出る
-      return toRow >= 6 || fromRow >= 6
-    }
+    if (!promotablePieces.includes(piece.type)) return false
+    if (owner === 'BLACK') return toRow <= 2 || fromRow <= 2
+    return toRow >= 6 || fromRow >= 6
   }
 
-  // 必ず成らなければならないかチェック
   const mustPromote = (piece: any, toRow: number, owner: string): boolean => {
     if (piece.type === 'PAWN' || piece.type === 'LANCE') {
-      if (owner === 'BLACK') return toRow === 0
-      else return toRow === 8
+      return owner === 'BLACK' ? toRow === 0 : toRow === 8
     }
     if (piece.type === 'KNIGHT') {
-      if (owner === 'BLACK') return toRow <= 1
-      else return toRow >= 7
+      return owner === 'BLACK' ? toRow <= 1 : toRow >= 7
     }
     return false
   }
@@ -67,37 +72,22 @@ export function GameDetailPage() {
     to: { row: number; column: number }
   ) => {
     if (!currentGame || !gameId) return
-
     setMoveError(null)
-    setSelectedDropPiece(null) // Clear drop selection
+    setSelectedDropPiece(null)
 
-    const piece = currentGame.boardState.find(
-      (p) => p.row === from.row && p.column === from.column
-    )
+    const piece = currentGame.boardState.find(p => p.row === from.row && p.column === from.column)
+    if (!piece) { setMoveError('駒が見つかりません'); return }
 
-    if (!piece) {
-      setMoveError('駒が見つかりません')
-      return
-    }
+    const playerId = currentGame.currentTurn === 'BLACK' ? currentGame.blackPlayerId : currentGame.whitePlayerId
 
-    const playerId =
-      currentGame.currentTurn === 'BLACK'
-        ? currentGame.blackPlayerId
-        : currentGame.whitePlayerId
-
-    // 成り判定
-    const owner = piece.owner
-    if (canPromote(piece, from.row, to.row, owner)) {
-      if (mustPromote(piece, to.row, owner)) {
-        // 必ず成る
+    if (canPromote(piece, from.row, to.row, piece.owner)) {
+      if (mustPromote(piece, to.row, piece.owner)) {
         await executeMove(from, to, piece, playerId, true)
       } else {
-        // 選択させる
         setPendingMove({ from, to, piece, playerId })
         setShowPromotionDialog(true)
       }
     } else {
-      // 成れない
       await executeMove(from, to, piece, playerId, false)
     }
   }
@@ -110,20 +100,9 @@ export function GameDetailPage() {
     promote: boolean
   ) => {
     if (!gameId) return
-
     setIsMoving(true)
-
     try {
-      await api.makeMove(gameId, {
-        player: playerId,
-        fromRow: from.row,
-        fromColumn: from.column,
-        toRow: to.row,
-        toColumn: to.column,
-        pieceType: piece.type,
-        promote,
-      })
-      // Fallback fetch in case WebSocket is unavailable
+      await api.makeMove(gameId, { player: playerId, fromRow: from.row, fromColumn: from.column, toRow: to.row, toColumn: to.column, pieceType: piece.type, promote })
       await fetchGame(gameId)
     } catch (err) {
       setMoveError(err instanceof Error ? err.message : '駒の移動に失敗しました')
@@ -135,28 +114,16 @@ export function GameDetailPage() {
   const handlePromotionChoice = async (promote: boolean) => {
     setShowPromotionDialog(false)
     if (pendingMove) {
-      await executeMove(
-        pendingMove.from,
-        pendingMove.to,
-        pendingMove.piece,
-        pendingMove.playerId,
-        promote
-      )
+      await executeMove(pendingMove.from, pendingMove.to, pendingMove.piece, pendingMove.playerId, promote)
       setPendingMove(null)
     }
   }
 
-  const handleDrop = async (
-    to: { row: number; column: number },
-    pieceType: PieceType
-  ) => {
+  const handleDrop = async (to: { row: number; column: number }, pieceType: PieceType) => {
     if (!currentGame || !gameId) return
-
-    // 二歩チェック: 歩兵を打つ場合、同じ列に自分の歩兵がないか確認
     if (pieceType === 'PAWN') {
-      const currentPlayer = currentGame.currentTurn
       const hasPawnInColumn = currentGame.boardState.some(
-        (p) => p.type === 'PAWN' && p.owner === currentPlayer && p.column === to.column
+        p => p.type === 'PAWN' && p.owner === currentGame.currentTurn && p.column === to.column
       )
       if (hasPawnInColumn) {
         setMoveError('二歩です。同じ列に歩兵がある場所には歩兵を打てません。')
@@ -164,25 +131,12 @@ export function GameDetailPage() {
         return
       }
     }
-
     setIsMoving(true)
     setMoveError(null)
     setSelectedDropPiece(null)
-
     try {
-      // 現在のターンに基づいてプレイヤーIDを取得
-      const playerId =
-        currentGame.currentTurn === 'BLACK'
-          ? currentGame.blackPlayerId
-          : currentGame.whitePlayerId
-
-      await api.dropPiece(gameId, {
-        player: playerId,
-        toRow: to.row,
-        toColumn: to.column,
-        pieceType,
-      })
-      // Fallback fetch in case WebSocket is unavailable
+      const playerId = currentGame.currentTurn === 'BLACK' ? currentGame.blackPlayerId : currentGame.whitePlayerId
+      await api.dropPiece(gameId, { player: playerId, toRow: to.row, toColumn: to.column, pieceType })
       await fetchGame(gameId)
     } catch (err) {
       setMoveError(err instanceof Error ? err.message : '駒を打つことに失敗しました')
@@ -192,29 +146,17 @@ export function GameDetailPage() {
   }
 
   const handlePieceSelect = (pieceType: PieceType) => {
-    if (selectedDropPiece === pieceType) {
-      setSelectedDropPiece(null) // Deselect
-    } else {
-      setSelectedDropPiece(pieceType)
-    }
+    setSelectedDropPiece(prev => prev === pieceType ? null : pieceType)
   }
 
   const handleResign = async () => {
     if (!currentGame || !gameId) return
-
     setIsMoving(true)
     setMoveError(null)
     setShowResignDialog(false)
-
     try {
-      // 現在のターンに基づいてプレイヤーIDを取得
-      const playerId =
-        currentGame.currentTurn === 'BLACK'
-          ? currentGame.blackPlayerId
-          : currentGame.whitePlayerId
-
+      const playerId = currentGame.currentTurn === 'BLACK' ? currentGame.blackPlayerId : currentGame.whitePlayerId
       await api.resignGame(gameId, playerId)
-      // Fallback fetch in case WebSocket is unavailable
       await fetchGame(gameId)
     } catch (err) {
       setMoveError(err instanceof Error ? err.message : '投了に失敗しました')
@@ -223,227 +165,205 @@ export function GameDetailPage() {
     }
   }
 
+  const formatDate = (dateString: string): string => new Date(dateString).toLocaleString('ja-JP')
+
   if (loading && !currentGame) {
-    return <div className="loading">読み込み中...</div>
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: token('space.600', '48px') }}>
+        <Spinner size="large" label="読み込み中..." />
+      </div>
+    )
   }
 
   if (error) {
     return (
-      <div className="error">
-        <p>エラー: {error}</p>
-        <button onClick={clearError}>閉じる</button>
-        <Link to="/">対局一覧に戻る</Link>
+      <div style={{ padding: token('space.200', '16px') }}>
+        <SectionMessage
+          appearance="error"
+          title="エラーが発生しました"
+          actions={[
+            <SectionMessageAction key="close" onClick={clearError}>閉じる</SectionMessageAction>,
+            <SectionMessageAction key="back" onClick={() => navigate('/')}>対局一覧に戻る</SectionMessageAction>,
+          ]}
+        >
+          {error}
+        </SectionMessage>
       </div>
     )
   }
 
   if (!currentGame) {
     return (
-      <div className="empty-state">
-        <p>対局が見つかりません</p>
-        <Link to="/">対局一覧に戻る</Link>
+      <div style={{ padding: token('space.200', '16px') }}>
+        <SectionMessage
+          appearance="warning"
+          title="対局が見つかりません"
+          actions={[
+            <SectionMessageAction key="back" onClick={() => navigate('/')}>対局一覧に戻る</SectionMessageAction>,
+          ]}
+        >
+          指定された対局IDのデータが見つかりませんでした。
+        </SectionMessage>
       </div>
     )
   }
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString)
-    return date.toLocaleString('ja-JP')
-  }
+  const isInCheck = currentGame.blackInCheck || currentGame.whiteInCheck
+  const checkedPlayer = currentGame.blackInCheck ? '先手' : '後手'
 
   return (
-    <div className="page game-detail-page">
+    <div style={{ maxWidth: 1400 }}>
+      {/* 成りダイアログ */}
       {showPromotionDialog && pendingMove && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '30px',
-            borderRadius: '8px',
-            maxWidth: '400px',
-            width: '90%',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-          }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>駒を成りますか？</h3>
-            <p style={{ marginBottom: '20px', lineHeight: '1.6' }}>
-              {pendingMove.piece.type === 'PAWN' && '歩'}
-              {pendingMove.piece.type === 'LANCE' && '香'}
-              {pendingMove.piece.type === 'KNIGHT' && '桂'}
-              {pendingMove.piece.type === 'SILVER' && '銀'}
-              {pendingMove.piece.type === 'BISHOP' && '角'}
-              {pendingMove.piece.type === 'ROOK' && '飛'}
-              を成りますか？
+        <ModalDialog onClose={() => { setShowPromotionDialog(false); setPendingMove(null) }}>
+          <ModalHeader>
+            <ModalTitle>駒を成りますか？</ModalTitle>
+          </ModalHeader>
+          <ModalBody>
+            <p style={{ fontSize: 16 }}>
+              {PIECE_NAMES[pendingMove.piece.type] || pendingMove.piece.type}を成りますか？
             </p>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-              <button
-                onClick={() => handlePromotionChoice(false)}
-                style={{
-                  padding: '12px 24px',
-                  fontSize: '16px',
-                  backgroundColor: '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  minWidth: '120px'
-                }}
-              >
-                成らない
-              </button>
-              <button
-                onClick={() => handlePromotionChoice(true)}
-                style={{
-                  padding: '12px 24px',
-                  fontSize: '16px',
-                  backgroundColor: '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  minWidth: '120px'
-                }}
-              >
-                成る
-              </button>
-            </div>
-          </div>
-        </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button appearance="subtle" onClick={() => handlePromotionChoice(false)}>
+              成らない
+            </Button>
+            <Button appearance="primary" onClick={() => handlePromotionChoice(true)}>
+              成る
+            </Button>
+          </ModalFooter>
+        </ModalDialog>
       )}
 
+      {/* 投了確認ダイアログ */}
       {showResignDialog && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '30px',
-            borderRadius: '8px',
-            maxWidth: '400px',
-            width: '90%',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-          }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>投了の確認</h3>
-            <p style={{ marginBottom: '20px', lineHeight: '1.6' }}>
+        <ModalDialog onClose={() => setShowResignDialog(false)}>
+          <ModalHeader>
+            <ModalTitle appearance="danger">投了の確認</ModalTitle>
+          </ModalHeader>
+          <ModalBody>
+            <p style={{ fontSize: 16, lineHeight: 1.6 }}>
               本当に投了しますか？<br />
-              {currentGame?.currentTurn === 'BLACK' ? '先手' : '後手'}の負けとなります。
+              {currentGame.currentTurn === 'BLACK' ? '先手' : '後手'}の負けとなります。
             </p>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setShowResignDialog(false)}
-                style={{
-                  padding: '8px 16px',
-                  fontSize: '14px',
-                  backgroundColor: '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                キャンセル
-              </button>
-              <button
-                onClick={handleResign}
-                style={{
-                  padding: '8px 16px',
-                  fontSize: '14px',
-                  backgroundColor: '#dc3545',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                投了する
-              </button>
-            </div>
-          </div>
-        </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button appearance="subtle" onClick={() => setShowResignDialog(false)}>
+              キャンセル
+            </Button>
+            <Button appearance="danger" onClick={handleResign}>
+              投了する
+            </Button>
+          </ModalFooter>
+        </ModalDialog>
       )}
 
-      <div className="game-detail-header">
-        <Link to="/" className="back-link">
+      {/* 王手バナー */}
+      {currentGame.status === 'IN_PROGRESS' && isInCheck && (
+        <Banner appearance="warning">
+          王手！ {checkedPlayer}の玉が狙われています
+        </Banner>
+      )}
+
+      {/* ヘッダー */}
+      <div style={{ marginBottom: token('space.200', '16px') }}>
+        <Button appearance="subtle" onClick={() => navigate('/')}>
           ← 対局一覧に戻る
-        </Link>
-        <h2>対局詳細</h2>
+        </Button>
         {currentGame.moveCount > 0 && (
-          <Link to={`/replay/${currentGame.gameId}`} className="replay-link">
-            棋譜再生 (Replay) →
-          </Link>
+          <Button appearance="subtle" onClick={() => navigate(`/replay/${currentGame.gameId}`)}>
+            棋譜再生 →
+          </Button>
         )}
       </div>
 
-      <div className="game-detail-content">
-        <div className="game-info-panel">
-          <div className="info-section">
-            <h3>対局情報</h3>
-            <dl>
-              <dt>ステータス:</dt>
-              <dd>{currentGame.status === 'IN_PROGRESS' ? '対局中' : '終了'}</dd>
-
-              <dt>対局ID:</dt>
-              <dd className="monospace">{currentGame.gameId}</dd>
-
-              <dt>先手:</dt>
-              <dd className="monospace">{currentGame.blackPlayerId}</dd>
-
-              <dt>後手:</dt>
-              <dd className="monospace">{currentGame.whitePlayerId}</dd>
-
-              {currentGame.status === 'IN_PROGRESS' && (
-                <>
-                  <dt>現在の手番:</dt>
-                  <dd>{currentGame.currentTurn === 'BLACK' ? '先手' : '後手'}</dd>
-                </>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 2fr',
+        gap: token('space.300', '24px'),
+      }}>
+        {/* 左パネル: 対局情報 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: token('space.200', '16px') }}>
+          {/* 対局情報 */}
+          <div style={{
+            backgroundColor: '#FFFFFF',
+            border: `1px solid ${token('color.border', '#DFE1E6')}`,
+            borderRadius: 8,
+            padding: token('space.200', '16px'),
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: token('space.150', '12px'), color: token('color.text', '#172B4D'), fontSize: 16 }}>
+              対局情報
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: token('space.100', '8px'), fontSize: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: token('color.text.subtle', '#6B778C') }}>ステータス</span>
+                <Lozenge appearance={currentGame.status === 'IN_PROGRESS' ? 'inprogress' : 'default'}>
+                  {currentGame.status === 'IN_PROGRESS' ? '対局中' : '終了'}
+                </Lozenge>
+              </div>
+              {currentGame.aiGame && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: token('color.text.subtle', '#6B778C') }}>モード</span>
+                  <Lozenge appearance="new">AI対戦</Lozenge>
+                </div>
               )}
-
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ color: token('color.text.subtle', '#6B778C') }}>対局ID</span>
+                <span style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>{currentGame.gameId}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ color: token('color.text.subtle', '#6B778C') }}>先手</span>
+                <span style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>{currentGame.blackPlayerId}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ color: token('color.text.subtle', '#6B778C') }}>後手</span>
+                <span style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>{currentGame.whitePlayerId}</span>
+              </div>
+              {currentGame.status === 'IN_PROGRESS' && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: token('color.text.subtle', '#6B778C') }}>現在の手番</span>
+                  <span style={{ fontWeight: 600 }}>{currentGame.currentTurn === 'BLACK' ? '先手' : '後手'}</span>
+                </div>
+              )}
               {currentGame.winner && (
                 <>
-                  <dt>勝者:</dt>
-                  <dd>{currentGame.winner === 'BLACK' ? '先手' : '後手'}</dd>
-                  <dt>終了理由:</dt>
-                  <dd>
-                    {currentGame.endReason === 'CHECKMATE' && '詰み (Checkmate)'}
-                    {currentGame.endReason === 'RESIGNATION' && '投了 (Resignation)'}
-                    {currentGame.endReason === 'TIMEOUT' && 'タイムアップ (Timeout)'}
-                    {!currentGame.endReason && '不明'}
-                  </dd>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: token('color.text.subtle', '#6B778C') }}>勝者</span>
+                    <span style={{ fontWeight: 600 }}>{currentGame.winner === 'BLACK' ? '先手' : '後手'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: token('color.text.subtle', '#6B778C') }}>終了理由</span>
+                    <span>
+                      {currentGame.endReason === 'CHECKMATE' && '詰み'}
+                      {currentGame.endReason === 'RESIGNATION' && '投了'}
+                      {currentGame.endReason === 'TIMEOUT' && 'タイムアップ'}
+                      {!currentGame.endReason && '不明'}
+                    </span>
+                  </div>
                 </>
               )}
-
-              <dt>手数:</dt>
-              <dd>{currentGame.moveCount}</dd>
-
-              <dt>作成日時:</dt>
-              <dd>{formatDate(currentGame.createdAt)}</dd>
-
-              <dt>更新日時:</dt>
-              <dd>{formatDate(currentGame.updatedAt)}</dd>
-            </dl>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: token('color.text.subtle', '#6B778C') }}>手数</span>
+                <span style={{ fontWeight: 600 }}>{currentGame.moveCount}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ color: token('color.text.subtle', '#6B778C') }}>作成日時</span>
+                <span style={{ fontSize: 12 }}>{formatDate(currentGame.createdAt)}</span>
+              </div>
+            </div>
           </div>
 
-          <div className="info-section">
-            <h3>持ち駒</h3>
-            <div className="captured-pieces">
+          {/* 持ち駒 */}
+          <div style={{
+            backgroundColor: '#FFFFFF',
+            border: `1px solid ${token('color.border', '#DFE1E6')}`,
+            borderRadius: 8,
+            padding: token('space.200', '16px'),
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: token('space.150', '12px'), color: token('color.text', '#172B4D'), fontSize: 16 }}>
+              持ち駒
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: token('space.150', '12px') }}>
               <Hand
                 pieces={currentGame.blackCapturedPieces}
                 playerColor="BLACK"
@@ -461,123 +381,116 @@ export function GameDetailPage() {
             </div>
             {selectedDropPiece && (
               <div style={{
-                marginTop: '10px',
-                padding: '10px',
-                backgroundColor: '#fff3cd',
-                border: '1px solid #ffc107',
-                borderRadius: '4px',
+                marginTop: token('space.150', '12px'),
+                padding: token('space.100', '8px'),
+                backgroundColor: token('color.background.warning', '#FFFAE6'),
+                border: `1px solid ${token('color.border.warning', '#FF991F')}`,
+                borderRadius: 4,
                 textAlign: 'center',
-                fontSize: '14px'
+                fontSize: 13,
               }}>
-                💡 盤面の空いているマスをクリックして駒を打ってください
+                盤面の空いているマスをクリックして駒を打ってください
               </div>
             )}
           </div>
         </div>
 
-        <div className="game-board-panel">
-          <h3>盤面</h3>
+        {/* 右パネル: 盤面 */}
+        <div>
+          <h3 style={{ marginTop: 0, marginBottom: token('space.150', '12px'), color: token('color.text', '#172B4D') }}>盤面</h3>
 
+          {/* 詰み表示 */}
           {currentGame.status === 'FINISHED' && currentGame.endReason === 'CHECKMATE' && (
             <div style={{
-              padding: '20px',
-              marginBottom: '20px',
-              backgroundColor: '#d4edda',
-              border: '3px solid #28a745',
-              borderRadius: '8px',
-              textAlign: 'center'
+              padding: token('space.200', '16px'),
+              marginBottom: token('space.200', '16px'),
+              backgroundColor: token('color.background.success', '#E3FCEF'),
+              border: `2px solid ${token('color.border.success', '#00875A')}`,
+              borderRadius: 8,
+              textAlign: 'center',
             }}>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px' }}>
-                🎉 詰み! (Checkmate!)
+              <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, color: token('color.text.success', '#006644') }}>
+                詰み! (Checkmate)
               </div>
-              <div style={{ fontSize: '18px', color: '#155724' }}>
+              <div style={{ fontSize: 16, color: token('color.text.success', '#006644') }}>
                 {currentGame.winner === 'BLACK' ? '先手' : '後手'}の勝利です!
               </div>
             </div>
           )}
 
+          {/* 対局中UI */}
           {currentGame.status === 'IN_PROGRESS' && (
             <>
               {currentGame.aiGame && currentGame.currentTurn === 'WHITE' && (
                 <AiThinkingIndicator difficulty={currentGame.aiDifficulty} />
               )}
+
               <div style={{
-                padding: '20px',
-                marginBottom: '20px',
-                backgroundColor: currentGame.currentTurn === 'BLACK' ? '#fff3cd' : '#d1ecf1',
-                border: `3px solid ${currentGame.currentTurn === 'BLACK' ? '#ffc107' : '#17a2b8'}`,
-                borderRadius: '8px',
-                textAlign: 'center'
+                padding: token('space.200', '16px'),
+                marginBottom: token('space.200', '16px'),
+                backgroundColor: currentGame.currentTurn === 'BLACK'
+                  ? token('color.background.warning', '#FFFAE6')
+                  : token('color.background.information', '#DEEBFF'),
+                border: `2px solid ${currentGame.currentTurn === 'BLACK'
+                  ? token('color.border.warning', '#FF991F')
+                  : token('color.border.information', '#2684FF')}`,
+                borderRadius: 8,
+                textAlign: 'center',
               }}>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
+                <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
                   {currentGame.currentTurn === 'BLACK'
-                    ? '⚫ 先手の番'
-                    : currentGame.aiGame ? '⚪ AIの番' : '⚪ 後手の番'}
+                    ? '先手の番'
+                    : currentGame.aiGame ? 'AIの番' : '後手の番'}
                 </div>
-                <div style={{ fontSize: '14px', color: '#666' }}>
+                <div style={{ fontSize: 13, color: token('color.text.subtle', '#6B778C') }}>
                   手数: {currentGame.moveCount}
                 </div>
-                {(currentGame.blackInCheck || currentGame.whiteInCheck) && (
-                  <div style={{
-                    marginTop: '10px',
-                    padding: '10px',
-                    backgroundColor: '#f8d7da',
-                    border: '2px solid #dc3545',
-                    borderRadius: '4px',
-                    color: '#721c24',
-                    fontWeight: 'bold',
-                    fontSize: '18px'
-                  }}>
-                    ⚠️ 王手! ({currentGame.blackInCheck ? '先手' : '後手'}の玉が狙われています)
-                  </div>
-                )}
               </div>
 
-              <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-                <button
+              <div style={{ marginBottom: token('space.200', '16px'), textAlign: 'center' }}>
+                <Button
+                  appearance="danger"
+                  isDisabled={isMoving}
                   onClick={() => setShowResignDialog(true)}
-                  disabled={isMoving}
-                  style={{
-                    padding: '10px 20px',
-                    fontSize: '16px',
-                    backgroundColor: '#dc3545',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: isMoving ? 'not-allowed' : 'pointer',
-                    opacity: isMoving ? 0.6 : 1
-                  }}
                 >
                   投了する (Resign)
-                </button>
+                </Button>
               </div>
             </>
           )}
 
+          {/* エラー・移動中 */}
           {moveError && (
-            <div className="move-error" style={{
-              color: '#721c24',
-              backgroundColor: '#f8d7da',
-              border: '1px solid #f5c6cb',
-              padding: '12px',
-              marginBottom: '10px',
-              borderRadius: '4px'
-            }}>
-              エラー: {moveError}
+            <div style={{ marginBottom: token('space.150', '12px') }}>
+              <SectionMessage
+                appearance="error"
+                title="エラー"
+                actions={[
+                  <SectionMessageAction key="close" onClick={() => setMoveError(null)}>閉じる</SectionMessageAction>,
+                ]}
+              >
+                {moveError}
+              </SectionMessage>
             </div>
           )}
+
           {isMoving && (
-            <div className="move-loading" style={{
-              color: '#004085',
-              backgroundColor: '#cce5ff',
-              border: '1px solid #b8daff',
-              padding: '12px',
-              marginBottom: '10px',
-              borderRadius: '4px'
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: token('space.100', '8px'),
+              padding: token('space.150', '12px'),
+              marginBottom: token('space.150', '12px'),
+              backgroundColor: token('color.background.information', '#DEEBFF'),
+              borderRadius: 4,
+              fontSize: 14,
+              color: token('color.text.information', '#0052CC'),
             }}>
+              <Spinner size="small" label="移動中" />
               駒を移動中...
             </div>
           )}
+
           <Board
             boardState={currentGame.boardState}
             onMove={handleMove}
@@ -592,12 +505,8 @@ export function GameDetailPage() {
             invalidDropColumns={
               selectedDropPiece === 'PAWN'
                 ? currentGame.boardState
-                    .filter(
-                      (p) =>
-                        p.type === 'PAWN' &&
-                        p.owner === currentGame.currentTurn
-                    )
-                    .map((p) => p.column)
+                    .filter(p => p.type === 'PAWN' && p.owner === currentGame.currentTurn)
+                    .map(p => p.column)
                 : []
             }
           />

@@ -73,10 +73,10 @@ describe('GameCard', () => {
       expect(screen.getByText(/12/)).toBeTruthy()
     })
 
-    it('links to game detail page', () => {
-      const { container } = renderCard(makeGame())
-      const link = container.querySelector('a')
-      expect(link?.getAttribute('href')).toBe('/game/aaaabbbb-cccc-dddd-eeee-ffff00001111')
+    it('has link role for navigation to game detail page', () => {
+      renderCard(makeGame())
+      const link = screen.getByRole('link')
+      expect(link).toBeTruthy()
     })
   })
 

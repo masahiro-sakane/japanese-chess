@@ -135,12 +135,12 @@ describe('GameDetailPage - game info', () => {
 
   it('shows BLACK turn indicator', () => {
     renderGame(makeGame({ currentTurn: 'BLACK' }))
-    expect(screen.getByText('⚫ 先手の番')).toBeTruthy()
+    expect(screen.getByText('先手の番')).toBeTruthy()
   })
 
   it('shows WHITE turn indicator', () => {
     renderGame(makeGame({ currentTurn: 'WHITE' }))
-    expect(screen.getByText('⚪ 後手の番')).toBeTruthy()
+    expect(screen.getByText('後手の番')).toBeTruthy()
   })
 
   it('shows link back to game list', () => {
@@ -152,17 +152,17 @@ describe('GameDetailPage - game info', () => {
 describe('GameDetailPage - check display', () => {
   it('shows 王手 warning when BLACK is in check', () => {
     renderGame(makeGame({ blackInCheck: true }))
-    expect(screen.getByText(/王手!/)).toBeTruthy()
+    expect(screen.getByText(/王手/)).toBeTruthy()
   })
 
   it('shows 王手 warning when WHITE is in check', () => {
     renderGame(makeGame({ whiteInCheck: true }))
-    expect(screen.getByText(/王手!/)).toBeTruthy()
+    expect(screen.getByText(/王手/)).toBeTruthy()
   })
 
   it('does not show 王手 when no check', () => {
     renderGame(makeGame())
-    expect(screen.queryByText(/王手!/)).toBeNull()
+    expect(screen.queryByText(/王手/)).toBeNull()
   })
 })
 
@@ -231,7 +231,7 @@ describe('GameDetailPage - resignation', () => {
 describe('GameDetailPage - AI game', () => {
   it('shows AIの番 when AI game and WHITE turn', () => {
     renderGame(makeGame({ aiGame: true, currentTurn: 'WHITE' }))
-    expect(screen.getByText('⚪ AIの番')).toBeTruthy()
+    expect(screen.getByText('AIの番')).toBeTruthy()
   })
 
   it('does not show resign button during AI turn', () => {

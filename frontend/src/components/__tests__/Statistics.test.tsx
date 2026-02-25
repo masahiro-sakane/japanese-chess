@@ -50,10 +50,11 @@ beforeEach(() => {
 })
 
 describe('Statistics component', () => {
-  it('shows loading indicator when loading and no statistics', () => {
+  it('shows loading indicator (Spinner) when loading and no statistics', () => {
     mockLoading = true
     render(<Statistics />)
-    expect(screen.getByText('読み込み中...')).toBeTruthy()
+    const spinner = screen.getByRole('img', { name: '読み込み中...' })
+    expect(spinner).toBeTruthy()
   })
 
   it('shows error message when error', () => {
@@ -103,7 +104,7 @@ describe('Statistics component', () => {
     })
   })
 
-  it('shows chart loading indicator while charts load', async () => {
+  it('shows chart loading indicator (Spinner) while charts load', async () => {
     mockStatistics = { totalGames: 5, activeGames: 2, completedGames: 3 }
 
     const { gameService } = await import('../../services/gameService')
@@ -112,6 +113,7 @@ describe('Statistics component', () => {
     )
 
     render(<Statistics />)
-    expect(screen.getByText('グラフ読み込み中...')).toBeTruthy()
+    const spinner = screen.getByRole('img', { name: 'グラフ読み込み中...' })
+    expect(spinner).toBeTruthy()
   })
 })

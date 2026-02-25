@@ -39,21 +39,23 @@ describe('Hand component', () => {
       expect(screen.getByText('飛')).toBeTruthy()
     })
 
-    it('shows count ×2 for two pawns', () => {
+    it('shows count 2 via Badge for two pawns', () => {
       render(<Hand pieces={['PAWN', 'PAWN']} playerColor="BLACK" isActive={false} />)
-      expect(screen.getByText('×2')).toBeTruthy()
+      expect(screen.getByText('2')).toBeTruthy()
     })
 
-    it('does not show count when only 1 piece', () => {
+    it('does not show count badge when only 1 piece', () => {
       render(<Hand pieces={['GOLD']} playerColor="BLACK" isActive={false} />)
-      expect(screen.queryByText(/×/)).toBeNull()
+      // Only the piece name should be present, no numeric badge
+      expect(screen.getByText('金')).toBeTruthy()
+      expect(screen.queryByText('1')).toBeNull()
     })
 
     it('groups same piece types', () => {
       render(<Hand pieces={['PAWN', 'PAWN', 'PAWN']} playerColor="BLACK" isActive={false} />)
       const pawns = screen.getAllByText('歩')
       expect(pawns).toHaveLength(1) // grouped into one element
-      expect(screen.getByText('×3')).toBeTruthy()
+      expect(screen.getByText('3')).toBeTruthy()
     })
 
     it('shows multiple piece types', () => {
@@ -93,8 +95,8 @@ describe('Hand component', () => {
       expect(onPieceSelect).not.toHaveBeenCalled()
     })
 
-    it('applies selected style when piece is selected', () => {
-      const { container } = render(
+    it('applies selected style when piece is selected (aria-pressed)', () => {
+      render(
         <Hand
           pieces={['ROOK']}
           playerColor="BLACK"
@@ -102,12 +104,13 @@ describe('Hand component', () => {
           selectedPiece="ROOK"
         />
       )
-      const piece = container.querySelector('.hand-piece.selected')
-      expect(piece).toBeTruthy()
+      const button = screen.getByRole('button', { pressed: true })
+      expect(button).toBeTruthy()
+      expect(button.getAttribute('aria-pressed')).toBe('true')
     })
 
     it('does not apply selected style for non-selected piece', () => {
-      const { container } = render(
+      render(
         <Hand
           pieces={['ROOK', 'BISHOP']}
           playerColor="BLACK"
@@ -115,32 +118,33 @@ describe('Hand component', () => {
           selectedPiece="ROOK"
         />
       )
-      const selected = container.querySelectorAll('.hand-piece.selected')
-      expect(selected).toHaveLength(1)
+      const allButtons = screen.getAllByRole('button')
+      const pressedButtons = allButtons.filter(b => b.getAttribute('aria-pressed') === 'true')
+      expect(pressedButtons).toHaveLength(1)
     })
 
     it('uses pointer cursor when active', () => {
-      const { container } = render(
+      render(
         <Hand
           pieces={['PAWN']}
           playerColor="BLACK"
           isActive={true}
         />
       )
-      const piece = container.querySelector('.hand-piece') as HTMLElement
-      expect(piece?.style.cursor).toBe('pointer')
+      const button = screen.getByRole('button', { name: /歩/ })
+      expect(button.style.cursor).toBe('pointer')
     })
 
     it('uses default cursor when not active', () => {
-      const { container } = render(
+      render(
         <Hand
           pieces={['PAWN']}
           playerColor="BLACK"
           isActive={false}
         />
       )
-      const piece = container.querySelector('.hand-piece') as HTMLElement
-      expect(piece?.style.cursor).toBe('default')
+      const button = screen.getByRole('button', { name: /歩/ })
+      expect(button.style.cursor).toBe('default')
     })
   })
 })

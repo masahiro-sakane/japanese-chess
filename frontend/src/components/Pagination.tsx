@@ -1,3 +1,6 @@
+import AtlaskitPagination from '@atlaskit/pagination'
+import Select from '@atlaskit/select'
+import { token } from '@atlaskit/tokens'
 import { useGameStore } from '../stores/gameStore'
 
 interface PaginationProps {
@@ -6,6 +9,15 @@ interface PaginationProps {
   totalElements: number
 }
 
+type PageSizeOption = { label: string; value: number }
+
+const PAGE_SIZE_OPTIONS: PageSizeOption[] = [
+  { label: '10件', value: 10 },
+  { label: '20件', value: 20 },
+  { label: '50件', value: 50 },
+  { label: '100件', value: 100 },
+]
+
 export function Pagination({ currentPage, totalPages, totalElements }: PaginationProps) {
   const { setPage, pageSize, setPageSize } = useGameStore()
 
@@ -13,85 +25,45 @@ export function Pagination({ currentPage, totalPages, totalElements }: Paginatio
     return null
   }
 
-  const getPageNumbers = (): number[] => {
-    const pages: number[] = []
-    const maxVisible = 5
-    let start = Math.max(0, currentPage - Math.floor(maxVisible / 2))
-    const end = Math.min(totalPages, start + maxVisible)
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
 
-    if (end - start < maxVisible) {
-      start = Math.max(0, end - maxVisible)
-    }
+  const rangeStart = currentPage * pageSize + 1
+  const rangeEnd = Math.min((currentPage + 1) * pageSize, totalElements)
 
-    for (let i = start; i < end; i++) {
-      pages.push(i)
-    }
-
-    return pages
-  }
-
-  const handlePageSizeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setPageSize(Number(event.target.value))
-  }
+  const currentSizeOption = PAGE_SIZE_OPTIONS.find(o => o.value === pageSize) ?? PAGE_SIZE_OPTIONS[0]
 
   return (
-    <div className="pagination">
-      <div className="pagination-info">
-        {currentPage * pageSize + 1} - {Math.min((currentPage + 1) * pageSize, totalElements)} / {totalElements} 件
-      </div>
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: `${token('space.150', '12px')} 0`,
+      flexWrap: 'wrap',
+      gap: token('space.150', '12px'),
+    }}>
+      <span style={{ fontSize: 14, color: token('color.text.subtle', '#6B778C') }}>
+        {rangeStart} - {rangeEnd} / {totalElements} 件
+      </span>
 
-      <div className="pagination-controls">
-        <button
-          onClick={() => setPage(0)}
-          disabled={currentPage === 0}
-          className="pagination-button"
-        >
-          最初
-        </button>
+      <AtlaskitPagination
+        pages={pages}
+        selectedIndex={currentPage}
+        onChange={(_e: React.SyntheticEvent, newPage: number) => setPage(newPage - 1)}
+      />
 
-        <button
-          onClick={() => setPage(currentPage - 1)}
-          disabled={currentPage === 0}
-          className="pagination-button"
-        >
-          前へ
-        </button>
-
-        {getPageNumbers().map((pageNum) => (
-          <button
-            key={pageNum}
-            onClick={() => setPage(pageNum)}
-            className={`pagination-button ${pageNum === currentPage ? 'active' : ''}`}
-          >
-            {pageNum + 1}
-          </button>
-        ))}
-
-        <button
-          onClick={() => setPage(currentPage + 1)}
-          disabled={currentPage >= totalPages - 1}
-          className="pagination-button"
-        >
-          次へ
-        </button>
-
-        <button
-          onClick={() => setPage(totalPages - 1)}
-          disabled={currentPage >= totalPages - 1}
-          className="pagination-button"
-        >
-          最後
-        </button>
-      </div>
-
-      <div className="page-size-selector">
-        <label htmlFor="pageSize">表示件数:</label>
-        <select id="pageSize" value={pageSize} onChange={handlePageSizeChange}>
-          <option value={10}>10</option>
-          <option value={20}>20</option>
-          <option value={50}>50</option>
-          <option value={100}>100</option>
-        </select>
+      <div style={{ display: 'flex', alignItems: 'center', gap: token('space.100', '8px') }}>
+        <span style={{ fontSize: 14, color: token('color.text.subtle', '#6B778C') }}>表示件数:</span>
+        <div style={{ minWidth: 100 }}>
+          <Select<PageSizeOption>
+            inputId="page-size"
+            options={PAGE_SIZE_OPTIONS}
+            value={currentSizeOption}
+            onChange={(opt: PageSizeOption | null) => opt && setPageSize(opt.value)}
+            isSearchable={false}
+            menuPlacement="top"
+            aria-label="ページサイズ"
+          />
+        </div>
       </div>
     </div>
   )

@@ -1,3 +1,5 @@
+import Badge from '@atlaskit/badge'
+import { token } from '@atlaskit/tokens'
 import type { PieceType } from '../types/api'
 
 interface HandProps {
@@ -32,16 +34,23 @@ export function Hand({ pieces, playerColor, isActive, onPieceSelect, selectedPie
     onPieceSelect(pieceType as PieceType)
   }
 
-  const isSelected = (pieceType: string): boolean => {
-    return selectedPiece === pieceType
-  }
+  const isSelected = (pieceType: string): boolean => selectedPiece === pieceType
 
   return (
-    <div className={`hand hand-${playerColor.toLowerCase()}`}>
-      <h4>{playerColor === 'BLACK' ? '先手の持ち駒' : '後手の持ち駒'}</h4>
-      <div className="hand-pieces">
+    <div>
+      <h4 style={{
+        margin: `0 0 ${token('space.075', '6px')} 0`,
+        fontSize: 13,
+        fontWeight: 600,
+        color: token('color.text.subtle', '#6B778C'),
+      }}>
+        {playerColor === 'BLACK' ? '先手の持ち駒' : '後手の持ち駒'}
+      </h4>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: token('space.075', '6px'), minHeight: 36 }}>
         {uniquePieces.length === 0 ? (
-          <div className="hand-empty">なし</div>
+          <span style={{ fontSize: 13, color: token('color.text.subtlest', '#8993A4'), fontStyle: 'italic' }}>
+            なし
+          </span>
         ) : (
           uniquePieces.map((pieceType) => {
             const count = pieceCounts[pieceType]
@@ -49,24 +58,38 @@ export function Hand({ pieces, playerColor, isActive, onPieceSelect, selectedPie
             const selected = isSelected(pieceType)
 
             return (
-              <div
+              <button
                 key={pieceType}
-                className={`hand-piece ${isActive ? 'interactive' : ''} ${selected ? 'selected' : ''}`}
                 onClick={() => handlePieceClick(pieceType)}
+                disabled={!isActive}
                 style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: token('space.050', '4px'),
+                  padding: `${token('space.075', '6px')} ${token('space.100', '8px')}`,
+                  border: `2px solid ${selected
+                    ? token('color.border.selected', '#0052CC')
+                    : token('color.border', '#DFE1E6')}`,
+                  borderRadius: 4,
+                  backgroundColor: selected
+                    ? token('color.background.selected', '#DEEBFF')
+                    : '#FFFFFF',
                   cursor: isActive ? 'pointer' : 'default',
-                  padding: '8px 12px',
-                  margin: '4px',
-                  border: selected ? '2px solid #007bff' : '1px solid #ccc',
-                  borderRadius: '4px',
-                  backgroundColor: selected ? '#e7f3ff' : '#fff',
-                  display: 'inline-block',
-                  fontWeight: selected ? 'bold' : 'normal',
+                  fontWeight: selected ? 700 : 400,
+                  fontSize: 16,
+                  color: token('color.text', '#172B4D'),
+                  transition: 'border-color 0.15s, background-color 0.15s',
                 }}
+                aria-pressed={selected}
+                aria-label={`${displayName} ${count}枚`}
               >
-                <span className="piece-character">{displayName}</span>
-                {count > 1 && <span className="piece-count"> ×{count}</span>}
-              </div>
+                <span>{displayName}</span>
+                {count > 1 && (
+                  <Badge appearance={selected ? 'primary' : 'default'} max={99}>
+                    {count}
+                  </Badge>
+                )}
+              </button>
             )
           })
         )}

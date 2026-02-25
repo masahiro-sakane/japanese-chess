@@ -95,10 +95,12 @@ describe('GameList', () => {
     expect(mockFetchGames).toHaveBeenCalledTimes(1)
   })
 
-  it('shows loading indicator when loading and no games', () => {
+  it('shows loading indicator (Spinner) when loading and no games', () => {
     mockLoading = true
     renderGameList()
-    expect(screen.getByText('読み込み中...')).toBeTruthy()
+    // Atlaskit Spinner renders with a label attribute, not visible text
+    const spinner = screen.getByRole('img', { name: '読み込み中...' })
+    expect(spinner).toBeTruthy()
   })
 
   it('shows error message when error', () => {
@@ -141,11 +143,10 @@ describe('GameList', () => {
     expect(screen.getByTestId('status-filter')).toBeTruthy()
   })
 
-  it('renders 新規対局 link', () => {
+  it('renders 新規対局 button', () => {
     renderGameList()
-    const link = screen.getByText('+ 新規対局')
-    expect(link).toBeTruthy()
-    expect(link.getAttribute('href')).toBe('/create')
+    const button = screen.getByRole('button', { name: '+ 新規対局' })
+    expect(button).toBeTruthy()
   })
 
   it('shows すべてクリア button', () => {

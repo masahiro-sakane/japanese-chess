@@ -190,6 +190,58 @@
 
 ---
 
+## Phase 12 - Atlassian Design System UIリニューアル（Issue #29）✅ 完了
+
+### セットアップ
+- [x] `@atlaskit/css-reset` `@atlaskit/tokens` インストール・設定
+- [x] `@atlaskit/app-provider` でテーマプロバイダーを App ルートに追加
+- [x] 既存の `index.css` カスタムスタイルを Atlassian Design Tokens に移行（将棋盤固有スタイルのみ残存）
+
+### グローバルレイアウト
+- [x] `Layout.tsx`: `@atlaskit/atlassian-navigation` でヘッダーナビゲーションを刷新
+
+### 対局一覧ページ (GameListPage / GameList / GameCard)
+- [x] `GameCard.tsx`: `@atlaskit/lozenge` でステータスバッジ（対局中/終了）を刷新
+- [x] `GameList.tsx`: `@atlaskit/page-header` でページヘッダーを追加
+- [x] `GameList.tsx`: `@atlaskit/spinner` でローディング表示を置き換え
+- [x] `GameList.tsx`: `@atlaskit/empty-state` でデータなし表示を置き換え
+- [x] `GameList.tsx`: `@atlaskit/section-message` でエラー表示を置き換え
+- [x] `GameList.tsx`: `@atlaskit/button` で新規対局・クリアボタンを刷新
+
+### フィルター・ページネーション (StatusFilter / Pagination)
+- [x] `StatusFilter.tsx`: `@atlaskit/select` でフィルタードロップダウンを置き換え
+- [x] `Pagination.tsx`: `@atlaskit/pagination` + `@atlaskit/select`（ページサイズ）で完全置き換え
+
+### ゲーム作成ページ (CreateGamePage / AiDifficultySelector)
+- [x] `CreateGamePage.tsx`: `@atlaskit/form` + `@atlaskit/textfield` でフォームを刷新
+- [x] `CreateGamePage.tsx`: `@atlaskit/button` でボタンを置き換え（appearance="primary"）
+- [x] `CreateGamePage.tsx`: `@atlaskit/section-message` でヒント・エラー表示を刷新
+- [x] `AiDifficultySelector.tsx`: `@atlaskit/radio` で AI 難易度選択を置き換え
+- [x] `AiThinkingIndicator.tsx`: `@atlaskit/spinner` + `@atlaskit/inline-message` で AI 思考中表示を刷新
+
+### 対局詳細ページ (GameDetailPage)
+- [x] `GameDetailPage.tsx`: `@atlaskit/button` で投了・操作ボタンを刷新
+- [x] `GameDetailPage.tsx`: `@atlaskit/modal-dialog` で投了確認・成りダイアログを置き換え
+- [x] `GameDetailPage.tsx`: `@atlaskit/section-message` でエラー通知を置き換え
+- [x] `GameDetailPage.tsx`: `@atlaskit/banner` で王手中のアラートを表示
+- [x] `GameDetailPage.tsx`: `@atlaskit/spinner` で移動中・ローディング表示を刷新
+- [x] `GameDetailPage.tsx`: `@atlaskit/lozenge` でステータスバッジを統一
+
+### 将棋盤・駒 (Board / Piece / Hand)
+- [x] `Hand.tsx`: `@atlaskit/badge` で持ち駒の枚数バッジを表示
+- [x] `Hand.tsx`: Atlassian Design Tokens でスタイルを統一
+
+### 統計ページ (StatisticsPage / Statistics)
+- [x] `Statistics.tsx`: `@atlaskit/dynamic-table` で統計テーブルを置き換え
+- [x] `Statistics.tsx`: `@atlaskit/page-header` でページヘッダーを追加
+- [x] 統計カード: Atlassian Design Tokens で stat-card スタイルをリニューアル
+
+### テスト更新
+- [x] 変更した各コンポーネントのユニットテストを更新（208 tests、カバレッジ 93.5% ≥ 80%）
+- [x] jsdom 環境に matchMedia / IntersectionObserver / ResizeObserver モックを追加（test-setup.ts）
+
+---
+
 ## 技術的負債
 
 - [ ] フロントエンド: `GameDetailPage.tsx` の `any` 型を適切な型に修正

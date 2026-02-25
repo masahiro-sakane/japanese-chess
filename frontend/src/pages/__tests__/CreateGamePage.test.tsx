@@ -24,6 +24,38 @@ vi.mock('../../services/gameService', () => ({
   },
 }))
 
+// Mock @atlaskit/form to pass through native form submission
+// @atlaskit/form intercepts submit and calls onSubmit(formValues) instead of onSubmit(event),
+// which breaks components that expect React.FormEvent. We mock it to render a native form.
+vi.mock('@atlaskit/form', () => {
+  const React = require('react')
+  const Form = ({ onSubmit, children }: { onSubmit: (...args: unknown[]) => void; children: (props: { formProps: Record<string, unknown> }) => React.ReactNode }) => {
+    const formProps = {
+      onSubmit: (e: React.FormEvent) => {
+        e.preventDefault()
+        onSubmit(e)
+      },
+    }
+    return React.createElement(React.Fragment, null, children({ formProps }))
+  }
+  const Field = ({ children, name, label }: { children: (props: { fieldProps: Record<string, unknown> }) => React.ReactNode; name: string; label: string }) => {
+    return React.createElement(React.Fragment, null, children({ fieldProps: { id: name, name } }))
+  }
+  const FormSection = ({ children, title }: { children: React.ReactNode; title: string }) => {
+    return React.createElement('div', null, React.createElement('h3', null, title), children)
+  }
+  const HelperMessage = ({ children }: { children: React.ReactNode }) => {
+    return React.createElement('span', null, children)
+  }
+  return {
+    __esModule: true,
+    default: Form,
+    Field,
+    FormSection,
+    HelperMessage,
+  }
+})
+
 // Mock fetch for game polling
 global.fetch = vi.fn()
 
@@ -33,6 +65,12 @@ function renderPage() {
       <CreateGamePage />
     </BrowserRouter>
   )
+}
+
+function getTextInputs(container: HTMLElement): HTMLInputElement[] {
+  // Atlaskit TextField renders <input> without explicit type="text" attribute
+  const allInputs = container.querySelectorAll<HTMLInputElement>('input')
+  return Array.from(allInputs).filter(i => i.type === 'text' || i.type === '')
 }
 
 describe('CreateGamePage', () => {
@@ -62,16 +100,15 @@ describe('CreateGamePage', () => {
 
     it('renders black player ID input', () => {
       const { container } = renderPage()
-      const inputs = container.querySelectorAll<HTMLInputElement>('input[type="text"]')
-      // At least one text input for black player ID
-      expect(inputs.length).toBeGreaterThanOrEqual(1)
+      const textInputs = getTextInputs(container)
+      expect(textInputs.length).toBeGreaterThanOrEqual(1)
     })
 
     it('shows white player ID section in 対人戦 mode', () => {
       const { container } = renderPage()
-      const inputs = container.querySelectorAll<HTMLInputElement>('input[type="text"]')
+      const textInputs = getTextInputs(container)
       // In 対人戦 mode: both black and white inputs visible
-      expect(inputs.length).toBe(2)
+      expect(textInputs.length).toBe(2)
     })
 
     it('renders submit and cancel buttons', () => {
@@ -100,9 +137,9 @@ describe('CreateGamePage', () => {
       fireEvent.click(radios[1]) // AI mode
 
       await waitFor(() => {
-        const inputs = container.querySelectorAll<HTMLInputElement>('input[type="text"]')
+        const textInputs = getTextInputs(container)
         // Only black player ID input remains
-        expect(inputs.length).toBe(1)
+        expect(textInputs.length).toBe(1)
       })
     })
 
@@ -136,8 +173,10 @@ describe('CreateGamePage', () => {
       mockCreateGame.mockResolvedValue({ gameId: 'test-game-id' })
       const { container } = renderPage()
 
-      const form = container.querySelector('form')!
-      fireEvent.submit(form)
+      // Click the submit button instead of fireEvent.submit
+      // @atlaskit/form intercepts native submit and manages its own flow
+      const submitBtn = container.querySelector('button[type="submit"]')!
+      fireEvent.click(submitBtn)
 
       await waitFor(() => {
         expect(mockCreateGame).toHaveBeenCalledWith(
@@ -153,7 +192,8 @@ describe('CreateGamePage', () => {
       mockCreateGame.mockResolvedValue({ gameId: 'test-game-id' })
       const { container } = renderPage()
 
-      fireEvent.submit(container.querySelector('form')!)
+      const submitBtn = container.querySelector('button[type="submit"]')!
+      fireEvent.click(submitBtn)
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith('/game/test-game-id')
@@ -164,7 +204,8 @@ describe('CreateGamePage', () => {
       mockCreateGame.mockRejectedValue(new Error('サーバーエラー'))
       const { container } = renderPage()
 
-      fireEvent.submit(container.querySelector('form')!)
+      const submitBtn = container.querySelector('button[type="submit"]')!
+      fireEvent.click(submitBtn)
 
       await waitFor(() => {
         expect(container.textContent).toContain('サーバーエラー')
@@ -184,7 +225,8 @@ describe('CreateGamePage', () => {
         expect(container.textContent).toContain('AI難易度')
       })
 
-      fireEvent.submit(container.querySelector('form')!)
+      const submitBtn = container.querySelector('button[type="submit"]')!
+      fireEvent.click(submitBtn)
 
       await waitFor(() => {
         expect(mockCreateGame).toHaveBeenCalledWith(
@@ -211,15 +253,15 @@ describe('CreateGamePage', () => {
   describe('random ID generation', () => {
     it('regenerates black player ID when ランダム生成 clicked', () => {
       const { container } = renderPage()
-      const inputs = container.querySelectorAll<HTMLInputElement>('input[type="text"]')
-      const originalId = inputs[0].value
+      const textInputs = getTextInputs(container)
+      const originalId = textInputs[0].value
 
       const buttons = container.querySelectorAll('button')
       const randomBtn = Array.from(buttons).find(b => b.textContent?.includes('ランダム生成'))!
       fireEvent.click(randomBtn)
 
-      const newId = (container.querySelectorAll<HTMLInputElement>('input[type="text"]')[0]).value
-      expect(newId).not.toBe(originalId)
+      const updatedInputs = getTextInputs(container)
+      expect(updatedInputs[0].value).not.toBe(originalId)
     })
   })
 })
