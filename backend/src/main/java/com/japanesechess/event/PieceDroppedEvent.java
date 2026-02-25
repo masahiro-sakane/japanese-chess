@@ -1,6 +1,7 @@
 package com.japanesechess.event;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.japanesechess.domain.Move;
 import com.japanesechess.domain.PieceType;
@@ -11,6 +12,7 @@ import lombok.Getter;
 import java.util.UUID;
 
 @Getter
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class PieceDroppedEvent extends DomainEvent {
     private final Position position;
     private final PieceType pieceType;

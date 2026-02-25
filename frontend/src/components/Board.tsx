@@ -118,43 +118,64 @@ export function Board({
     }
   }
 
+  const SUJI_LABELS = ['9', '8', '7', '6', '5', '4', '3', '2', '1']
+  const DAN_LABELS = ['一', '二', '三', '四', '五', '六', '七', '八', '九']
+
   return (
     <div className="board-container">
-      <div className="board">
-        {board.map((row, rowIndex) => (
-          <div key={rowIndex} className="board-row">
-            {row.map((cell, colIndex) => {
-              const isSelected = isCellSelected(rowIndex, colIndex)
-              const isSelectable = canSelectPiece(cell)
-              const isDroppable = canDropOnCell(rowIndex, colIndex)
-              const isInPromotionZone = isPromotionZone(rowIndex)
-              const cellClass = `board-cell ${isSelected ? 'selected' : ''} ${
-                interactive && isSelectable ? 'selectable' : ''
-              } ${isDroppable ? 'droppable' : ''} ${isInPromotionZone ? 'promotion-zone' : ''} ${interactive ? 'interactive' : ''}`
+      <div className="board-wrapper">
+        {/* 筋ラベル（上部） */}
+        <div className="board-suji-labels">
+          <div className="board-corner" />
+          {SUJI_LABELS.map((label) => (
+            <div key={label} className="board-suji-label">{label}</div>
+          ))}
+          <div className="board-corner" />
+        </div>
+        <div className="board-middle">
+          <div className="board">
+            {board.map((row, rowIndex) => (
+              <div key={rowIndex} className="board-row">
+                {row.map((cell, colIndex) => {
+                  const isSelected = isCellSelected(rowIndex, colIndex)
+                  const isSelectable = canSelectPiece(cell)
+                  const isDroppable = canDropOnCell(rowIndex, colIndex)
+                  const isInPromotionZone = isPromotionZone(rowIndex)
+                  const cellClass = `board-cell ${isSelected ? 'selected' : ''} ${
+                    interactive && isSelectable ? 'selectable' : ''
+                  } ${isDroppable ? 'droppable' : ''} ${isInPromotionZone ? 'promotion-zone' : ''} ${interactive ? 'interactive' : ''}`
 
-              let backgroundColor: string | undefined
-              if (isDroppable) {
-                backgroundColor = '#d4edda'
-              } else if (isInPromotionZone) {
-                backgroundColor = '#fff3cd'
-              }
+                  let backgroundColor: string | undefined
+                  if (isDroppable) {
+                    backgroundColor = '#d4edda'
+                  } else if (isInPromotionZone) {
+                    backgroundColor = '#fff3cd'
+                  }
 
-              return (
-                <div
-                  key={`${rowIndex}-${colIndex}`}
-                  className={cellClass}
-                  onClick={() => handleCellClick(rowIndex, colIndex)}
-                  style={{
-                    cursor: interactive ? 'pointer' : 'default',
-                    backgroundColor,
-                  }}
-                >
-                  {cell && <Piece piece={cell} />}
-                </div>
-              )
-            })}
+                  return (
+                    <div
+                      key={`${rowIndex}-${colIndex}`}
+                      className={cellClass}
+                      onClick={() => handleCellClick(rowIndex, colIndex)}
+                      style={{
+                        cursor: interactive ? 'pointer' : 'default',
+                        backgroundColor,
+                      }}
+                    >
+                      {cell && <Piece piece={cell} />}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
           </div>
-        ))}
+          {/* 段ラベル（右側） */}
+          <div className="board-dan-labels">
+            {DAN_LABELS.map((label) => (
+              <div key={label} className="board-dan-label">{label}</div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

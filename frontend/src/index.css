@@ -1,504 +1,62 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* @atlaskit/css-reset を読み込んでいるため、基本リセットはそちらに委ねる */
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f5f5;
-}
+/* ===== 将棋盤固有スタイル ===== */
+/* Atlaskit Design Tokens で表現できない将棋盤・駒のカスタムスタイルのみ残す */
 
-/* Layout */
-.layout {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.header {
-  background-color: #2c3e50;
-  color: white;
-  padding: 1rem 2rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.header-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.logo {
-  text-decoration: none;
-  color: white;
-}
-
-.logo h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.nav {
-  display: flex;
-  gap: 1.5rem;
-}
-
-.nav-link {
-  color: white;
-  text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.main {
-  flex: 1;
-  padding: 2rem;
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.footer {
-  background-color: #34495e;
-  color: white;
-  padding: 1.5rem 2rem;
-  margin-top: 2rem;
-}
-
-.footer-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-/* Common */
-.page {
-  background-color: white;
-  border-radius: 8px;
-  padding: 2rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.loading {
-  text-align: center;
-  padding: 3rem;
-  color: #666;
-}
-
-.error {
-  background-color: #fee;
-  border: 1px solid #fcc;
-  border-radius: 4px;
-  padding: 1rem;
-  margin: 1rem 0;
-  color: #c33;
-}
-
-.error button {
-  margin-left: 1rem;
-  padding: 0.5rem 1rem;
-  background-color: #c33;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: #999;
-}
-
-/* Game List */
-.game-list-container {
-  width: 100%;
-}
-
-.game-list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.game-list-info {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.game-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-/* Game Card */
-.game-card {
-  background-color: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 1.5rem;
-  text-decoration: none;
-  color: inherit;
-  transition: box-shadow 0.2s, transform 0.2s;
-  display: block;
-}
-
-.game-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-}
-
-.game-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.status-active {
-  background-color: #d4edda;
-  color: #155724;
-}
-
-.status-finished {
-  background-color: #d1ecf1;
-  color: #0c5460;
-}
-
-.game-id {
-  font-family: monospace;
-  font-size: 0.875rem;
-  color: #666;
-}
-
-.game-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.players {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.player {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.player-label {
-  font-weight: 500;
-  min-width: 4rem;
-}
-
-.player-id {
-  font-family: monospace;
-  font-size: 0.875rem;
-  color: #666;
-}
-
-.current-turn,
-.winner {
-  padding: 0.5rem;
-  background-color: #f8f9fa;
-  border-radius: 4px;
-  font-size: 0.875rem;
-}
-
-.game-info {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.875rem;
-  color: #666;
-  padding-top: 0.5rem;
-  border-top: 1px solid #e0e0e0;
-}
-
-/* Status Filter */
-.status-filter {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.status-filter label {
-  font-weight: 500;
-}
-
-.status-filter select {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: white;
-  cursor: pointer;
-}
-
-/* Pagination */
-.pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 0;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.pagination-controls {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.pagination-button {
-  padding: 0.5rem 1rem;
-  border: 1px solid #ddd;
-  background-color: white;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.pagination-button:hover:not(:disabled) {
-  background-color: #f0f0f0;
-}
-
-.pagination-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pagination-button.active {
-  background-color: #2c3e50;
-  color: white;
-  border-color: #2c3e50;
-}
-
-.page-size-selector {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.page-size-selector select {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: white;
-  cursor: pointer;
-}
-
-/* Statistics */
-.statistics {
-  width: 100%;
-}
-
-.statistics h2 {
-  margin-bottom: 1.5rem;
-}
-
-.statistics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-}
-
-.stat-card {
-  background-color: #f8f9fa;
-  padding: 1.5rem;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: #666;
-  margin-bottom: 0.5rem;
-}
-
-.stat-value {
-  font-size: 2rem;
-  font-weight: bold;
-  color: #2c3e50;
-}
-
-/* Charts */
-.charts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: 1.5rem;
-  margin-top: 2rem;
-}
-
-.chart-card {
-  background-color: #f8f9fa;
-  padding: 1.5rem;
-  border-radius: 8px;
-}
-
-.chart-card--full {
-  grid-column: 1 / -1;
-}
-
-.chart-card h3 {
-  margin-bottom: 1rem;
-  font-size: 1rem;
-  color: #444;
-}
-
-.chart-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 280px;
-  color: #999;
-  font-size: 0.9rem;
-}
-
-.ranking-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1.5rem;
-  font-size: 0.875rem;
-}
-
-.ranking-table th,
-.ranking-table td {
-  padding: 0.5rem 0.75rem;
-  text-align: left;
-  border-bottom: 1px solid #dee2e6;
-}
-
-.ranking-table th {
-  background-color: #e9ecef;
-  font-weight: 600;
-  color: #495057;
-}
-
-.ranking-table tr:hover {
-  background-color: #f1f3f5;
-}
-
-/* Game Detail */
-.game-detail-page {
-  max-width: 1400px;
-}
-
-.game-detail-header {
-  margin-bottom: 1.5rem;
-}
-
-.back-link {
-  display: inline-block;
-  margin-bottom: 1rem;
-  color: #2c3e50;
-  text-decoration: none;
-}
-
-.back-link:hover {
-  text-decoration: underline;
-}
-
-.game-detail-content {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 2rem;
-}
-
-.game-info-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.info-section h3 {
-  margin-bottom: 1rem;
-  color: #2c3e50;
-}
-
-.info-section dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.5rem 1rem;
-}
-
-.info-section dt {
-  font-weight: 500;
-}
-
-.info-section dd {
-  color: #666;
-}
-
-.monospace {
-  font-family: monospace;
-  font-size: 0.875rem;
-}
-
-.captured-pieces {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.captured-section h4 {
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-  color: #666;
-}
-
-.captured-list {
-  padding: 0.75rem;
-  background-color: #f8f9fa;
-  border-radius: 4px;
-  min-height: 2.5rem;
-}
-
-.captured-list .empty {
-  color: #999;
-  font-style: italic;
-}
-
-.game-board-panel h3 {
-  margin-bottom: 1rem;
-  color: #2c3e50;
-}
-
-/* Board */
 .board-container {
   display: flex;
   justify-content: center;
-  padding: 1rem;
-  background-color: #f8f9fa;
+  padding: 16px;
+  background-color: #f4f5f7;
   border-radius: 8px;
+}
+
+.board-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.board-suji-labels {
+  display: flex;
+  align-items: center;
+}
+
+.board-corner {
+  width: 24px;
+  height: 20px;
+}
+
+.board-suji-label {
+  width: 50px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: #505f79;
+  font-weight: bold;
+}
+
+.board-middle {
+  display: flex;
+  align-items: stretch;
+}
+
+.board-dan-labels {
+  display: flex;
+  flex-direction: column;
+}
+
+.board-dan-label {
+  width: 24px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: #505f79;
+  font-weight: bold;
 }
 
 .board {
@@ -518,12 +76,13 @@ body {
 .board-cell {
   width: 50px;
   height: 50px;
+  /* 将棋盤の伝統的な木目色 */
   background-color: #f5deb3;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.15s ease;
 }
 
 .board-cell.interactive:hover {
@@ -539,7 +98,7 @@ body {
   box-shadow: inset 0 0 0 3px #fbc02d;
 }
 
-/* Piece */
+/* 駒 */
 .piece {
   width: 100%;
   height: 100%;
@@ -553,28 +112,20 @@ body {
 }
 
 .piece.black {
-  color: #000;
+  color: #172b4d;
 }
 
 .piece.white {
-  color: #c00;
+  color: #bf2600;
   transform: rotate(180deg);
 }
 
 .piece.promoted {
-  background-color: rgba(255, 215, 0, 0.2);
+  background-color: rgba(255, 215, 0, 0.25);
 }
 
-/* Responsive */
+/* レスポンシブ */
 @media (max-width: 768px) {
-  .game-detail-content {
-    grid-template-columns: 1fr;
-  }
-
-  .game-list {
-    grid-template-columns: 1fr;
-  }
-
   .board-cell {
     width: 40px;
     height: 40px;
@@ -584,12 +135,9 @@ body {
     font-size: 1rem;
   }
 
-  .pagination {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .pagination-controls {
-    justify-content: center;
+  .board-dan-label,
+  .board-suji-label {
+    height: 40px;
+    width: 40px;
   }
 }

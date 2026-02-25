@@ -58,7 +58,7 @@ class EventStoreRepositoryTest {
         assertDoesNotThrow(() -> repository.appendEvents(gameId, events, -1));
 
         verify(client, times(1)).appendToStream(
-            eq("Game-" + gameId),
+            eq("game-" + gameId),
             any(AppendToStreamOptions.class),
             any(Iterator.class)
         );
@@ -100,7 +100,7 @@ class EventStoreRepositoryTest {
     @Test
     void readEvents_ShouldReturnEvents_WhenStreamExists() throws Exception {
         UUID gameId = UUID.randomUUID();
-        String streamName = "Game-" + gameId;
+        String streamName = "game-" + gameId;
 
         GameCreatedEvent event1 = new GameCreatedEvent(
             gameId,
@@ -141,7 +141,7 @@ class EventStoreRepositoryTest {
     @Test
     void readEvents_ShouldReturnEmptyList_WhenStreamNotFound() throws Exception {
         UUID gameId = UUID.randomUUID();
-        String streamName = "Game-" + gameId;
+        String streamName = "game-" + gameId;
 
         CompletableFuture<ReadResult> future = new CompletableFuture<>();
         StreamNotFoundException exception = mock(StreamNotFoundException.class);
@@ -157,7 +157,7 @@ class EventStoreRepositoryTest {
     @Test
     void getStreamVersion_ShouldReturnVersion_WhenStreamExists() throws Exception {
         UUID gameId = UUID.randomUUID();
-        String streamName = "Game-" + gameId;
+        String streamName = "game-" + gameId;
 
         RecordedEvent recordedEvent = mock(RecordedEvent.class);
         when(recordedEvent.getRevision()).thenReturn(5L);
@@ -180,7 +180,7 @@ class EventStoreRepositoryTest {
     @Test
     void getStreamVersion_ShouldReturnMinusOne_WhenStreamNotFound() throws Exception {
         UUID gameId = UUID.randomUUID();
-        String streamName = "Game-" + gameId;
+        String streamName = "game-" + gameId;
 
         CompletableFuture<ReadResult> future = new CompletableFuture<>();
         StreamNotFoundException exception = mock(StreamNotFoundException.class);
@@ -196,7 +196,7 @@ class EventStoreRepositoryTest {
     @Test
     void getStreamVersion_ShouldReturnMinusOne_WhenStreamIsEmpty() throws Exception {
         UUID gameId = UUID.randomUUID();
-        String streamName = "Game-" + gameId;
+        String streamName = "game-" + gameId;
 
         ReadResult readResult = mock(ReadResult.class);
         when(readResult.getEvents()).thenReturn(List.of());

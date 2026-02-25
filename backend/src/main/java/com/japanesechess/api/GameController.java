@@ -51,11 +51,21 @@ public class GameController {
     public ResponseEntity<GameResponse> createGame(@Valid @RequestBody CreateGameRequest request) {
         UUID gameId = UUID.randomUUID();
 
-        CreateGameCommand command = new CreateGameCommand(
-            gameId,
-            request.getBlackPlayerId(),
-            request.getWhitePlayerId()
-        );
+        CreateGameCommand command;
+        if (request.isAiGame() && request.getAiDifficulty() != null) {
+            command = new CreateGameCommand(
+                gameId,
+                request.getBlackPlayerId(),
+                request.getEffectiveWhitePlayerId(),
+                request.getAiDifficulty()
+            );
+        } else {
+            command = new CreateGameCommand(
+                gameId,
+                request.getBlackPlayerId(),
+                request.getEffectiveWhitePlayerId()
+            );
+        }
 
         commandHandler.handle(command);
 

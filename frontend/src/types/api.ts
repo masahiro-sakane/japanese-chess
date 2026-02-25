@@ -40,6 +40,9 @@ export interface GameQueryDto {
   updatedAt: string
   blackInCheck: boolean
   whiteInCheck: boolean
+  aiGame: boolean
+  aiDifficulty: string | null
+  aiThinking: boolean
 }
 
 export interface MoveHistoryDto {
@@ -120,9 +123,13 @@ export interface GameResponse {
   message: string
 }
 
+export type AiDifficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
+
 export interface CreateGameRequest {
   blackPlayerId: string
   whitePlayerId: string
+  aiGame?: boolean
+  aiDifficulty?: AiDifficulty
 }
 
 export interface MovePieceRequest {

@@ -27,6 +27,9 @@ public class GameQueryDto {
     private Instant updatedAt;
     private Boolean blackInCheck;
     private Boolean whiteInCheck;
+    private Boolean aiGame;
+    private String aiDifficulty;
+    private Boolean aiThinking;
 
     @Data
     @NoArgsConstructor

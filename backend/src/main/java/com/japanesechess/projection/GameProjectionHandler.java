@@ -47,6 +47,10 @@ public class GameProjectionHandler {
             gameEntity.setWhitePlayerId(event.getWhitePlayerId());
             gameEntity.setStatus("IN_PROGRESS");
             gameEntity.setCurrentTurn(event.getFirstTurn().name());
+            gameEntity.setIsAiGame(event.isAiGame());
+            if (event.getAiDifficulty() != null) {
+                gameEntity.setAiDifficulty(event.getAiDifficulty().name());
+            }
             gameEntityRepository.save(gameEntity);
 
             // Create GameViewEntity with initial board state

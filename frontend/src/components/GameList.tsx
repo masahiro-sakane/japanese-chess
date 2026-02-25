@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../stores/gameStore'
+import Spinner from '@atlaskit/spinner'
+import EmptyState from '@atlaskit/empty-state'
+import SectionMessage, { SectionMessageAction } from '@atlaskit/section-message'
+import Button from '@atlaskit/button/new'
+import PageHeader from '@atlaskit/page-header'
+import { token } from '@atlaskit/tokens'
 import { GameCard } from './GameCard'
 import { Pagination } from './Pagination'
 import { StatusFilter } from './StatusFilter'
 
 export function GameList() {
+  const navigate = useNavigate()
   const {
     games,
     loading,
@@ -26,14 +33,9 @@ export function GameList() {
     if (!confirm('すべての対局履歴とデータベースをクリアします。よろしいですか？\n\n※ この操作は取り消せません')) {
       return
     }
-
     setIsClearing(true)
     try {
-      // PostgreSQLのクリア
-      await fetch('http://localhost:8080/api/admin/clear-database', {
-        method: 'POST',
-      })
-
+      await fetch('http://localhost:8080/api/admin/clear-database', { method: 'POST' })
       alert('データベースをクリアしました。ページをリロードします。')
       window.location.reload()
     } catch (err) {
@@ -44,76 +46,69 @@ export function GameList() {
   }
 
   if (loading && games.length === 0) {
-    return <div className="loading">読み込み中...</div>
-  }
-
-  if (error) {
     return (
-      <div className="error">
-        <p>エラー: {error}</p>
-        <button onClick={clearError}>閉じる</button>
+      <div style={{ display: 'flex', justifyContent: 'center', padding: token('space.600', '48px') }}>
+        <Spinner size="large" label="読み込み中..." />
       </div>
     )
   }
 
+  const actions = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: token('space.100', '8px'), flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 14, color: token('color.text.subtle', '#6B778C') }}>全 {totalElements} 件</span>
+      <StatusFilter />
+      <Button
+        appearance="danger"
+        isDisabled={isClearing}
+        onClick={handleClearAll}
+      >
+        {isClearing ? 'クリア中...' : 'すべてクリア'}
+      </Button>
+      <Button
+        appearance="primary"
+        onClick={() => navigate('/create')}
+      >
+        + 新規対局
+      </Button>
+    </div>
+  )
+
   return (
-    <div className="game-list-container">
-      <div className="game-list-header">
-        <h2>対局一覧</h2>
-        <div className="game-list-info">
-          <span>全 {totalElements} 件</span>
-          <StatusFilter />
-          <button
-            onClick={handleClearAll}
-            disabled={isClearing}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: isClearing ? '#ccc' : '#dc3545',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontWeight: 'bold',
-              cursor: isClearing ? 'not-allowed' : 'pointer',
-            }}
+    <div>
+      <PageHeader actions={actions}>対局一覧</PageHeader>
+
+      {error && (
+        <div style={{ marginBottom: token('space.200', '16px') }}>
+          <SectionMessage
+            appearance="error"
+            title="エラーが発生しました"
+            actions={[
+              <SectionMessageAction key="close" onClick={clearError}>閉じる</SectionMessageAction>,
+            ]}
           >
-            {isClearing ? 'クリア中...' : 'すべてクリア'}
-          </button>
-          <Link
-            to="/create-ai"
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#17a2b8',
-              color: 'white',
-              textDecoration: 'none',
-              borderRadius: '4px',
-              fontWeight: 'bold',
-            }}
-          >
-            AI対局
-          </Link>
-          <Link
-            to="/create"
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              textDecoration: 'none',
-              borderRadius: '4px',
-              fontWeight: 'bold',
-            }}
-          >
-            + 新規対局
-          </Link>
+            {error}
+          </SectionMessage>
         </div>
-      </div>
+      )}
 
       {games.length === 0 ? (
-        <div className="empty-state">
-          <p>対局が見つかりません</p>
-        </div>
+        <EmptyState
+          header="対局が見つかりません"
+          description="新しい対局を作成して将棋を楽しみましょう。"
+          primaryAction={
+            <Button appearance="primary" onClick={() => navigate('/create')}>
+              + 新規対局を作成
+            </Button>
+          }
+        />
       ) : (
         <>
-          <div className="game-list">
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gap: token('space.200', '16px'),
+            marginBottom: token('space.300', '24px'),
+          }}>
             {games.map((game) => (
               <GameCard key={game.gameId} game={game} />
             ))}

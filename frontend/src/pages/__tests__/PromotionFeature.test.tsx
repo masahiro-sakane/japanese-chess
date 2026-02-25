@@ -1,88 +1,237 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+// @vitest-environment jsdom
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { GameDetailPage } from '../GameDetailPage'
+import type { GameQueryDto } from '../../types/api'
+
+afterEach(cleanup)
+
+const mockMakeMove = vi.fn()
+const mockFetchGame = vi.fn()
 
 // Mock the API service
 vi.mock('../../services/api', () => ({
-  gameApi: {
-    getGame: vi.fn(),
-    movePiece: vi.fn(),
-    dropPiece: vi.fn(),
-    getMoveHistory: vi.fn(),
+  api: {
+    makeMove: (...args: unknown[]) => mockMakeMove(...args),
+    dropPiece: vi.fn().mockResolvedValue({ gameId: 'test', status: 'ok', message: 'ok' }),
+    resignGame: vi.fn().mockResolvedValue({ gameId: 'test', status: 'ok', message: 'ok' }),
+    getMoveHistory: vi.fn().mockResolvedValue([]),
   },
 }))
 
-describe('Promotion Feature', () => {
-  const mockGame = {
+// Mock useGameWebSocket
+vi.mock('../../hooks/useGameWebSocket', () => ({
+  useGameWebSocket: () => ({ connected: false }),
+}))
+
+// Mock react-router-dom params
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom')
+  return {
+    ...actual,
+    useParams: () => ({ gameId: 'test-game-id' }),
+  }
+})
+
+type CurrentGameState = GameQueryDto | null
+
+let currentGameState: CurrentGameState = null
+
+// Mock useGameStore with mutable state
+vi.mock('../../stores/gameStore', () => ({
+  useGameStore: Object.assign(
+    () => ({
+      get currentGame() { return currentGameState },
+      loading: false,
+      error: null,
+      fetchGame: mockFetchGame,
+      clearError: vi.fn(),
+    }),
+    {
+      setState: (update: { currentGame?: GameQueryDto }) => {
+        if (update.currentGame !== undefined) {
+          currentGameState = update.currentGame
+        }
+      },
+    }
+  ),
+}))
+
+function makeGame(overrides: Partial<GameQueryDto> = {}): GameQueryDto {
+  return {
     gameId: 'test-game-id',
-    blackPlayerId: 'player1',
-    whitePlayerId: 'player2',
+    blackPlayerId: 'black-player',
+    whitePlayerId: 'white-player',
     status: 'IN_PROGRESS',
     currentTurn: 'BLACK',
     winner: null,
     endReason: null,
-    boardState: [
-      // Black pawn at row 3, can promote if moved to row 2, 1, or 0
-      { row: 3, column: 4, type: 'PAWN', owner: 'BLACK', promoted: false },
-      // White pawn at row 5, can promote if moved to row 6, 7, or 8
-      { row: 5, column: 4, type: 'PAWN', owner: 'WHITE', promoted: false },
-      // Black knight at row 2, must promote if moved to row 1 or 0
-      { row: 2, column: 3, type: 'KNIGHT', owner: 'BLACK', promoted: false },
-      // Black lance at row 1, must promote if moved to row 0
-      { row: 1, column: 2, type: 'LANCE', owner: 'BLACK', promoted: false },
-    ],
+    boardState: [],
     blackCapturedPieces: [],
     whiteCapturedPieces: [],
-    moveCount: 10,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
+    moveCount: 1,
+    createdAt: '2026-01-01T00:00:00',
+    updatedAt: '2026-01-01T00:00:00',
     blackInCheck: false,
     whiteInCheck: false,
+    aiGame: false,
+    aiDifficulty: null,
+    aiThinking: false,
+    ...overrides,
   }
+}
 
-  it('should show promotion dialog for optional promotion', async () => {
-    const { gameApi } = await import('../../services/api')
-    vi.mocked(gameApi.getGame).mockResolvedValue(mockGame)
-    vi.mocked(gameApi.getMoveHistory).mockResolvedValue([])
+function renderGame(game: GameQueryDto | null = null) {
+  currentGameState = game
+  mockMakeMove.mockResolvedValue({ gameId: 'test-game-id', status: 'ok', message: 'ok' })
+  mockFetchGame.mockResolvedValue(undefined)
+  return render(
+    <BrowserRouter>
+      <GameDetailPage />
+    </BrowserRouter>
+  )
+}
 
-    render(
-      <BrowserRouter>
-        <GameDetailPage />
-      </BrowserRouter>
-    )
+describe('Promotion Feature', () => {
+  it('should render game page without loading indicator when game is loaded', async () => {
+    renderGame(null)
+    await waitFor(() => {
+      expect(screen.queryByText(/読み込み中/)).toBeNull()
+    })
+  })
+
+  it('should show promotion dialog when moving BLACK pawn to promotion zone', async () => {
+    const game = makeGame({
+      boardState: [
+        { row: 3, column: 4, type: 'PAWN', owner: 'BLACK', promoted: false },
+      ],
+    })
+    const { container } = renderGame(game)
+
+    const cells = container.querySelectorAll('.board-cell')
+    // Select BLACK pawn at row 3, col 4
+    fireEvent.click(cells[3 * 9 + 4])
+    // Move to row 1 (promotion zone for BLACK: rows 0-2)
+    fireEvent.click(cells[1 * 9 + 4])
 
     await waitFor(() => {
-      expect(screen.queryByText(/読み込み中/)).not.toBeInTheDocument()
+      expect(screen.queryByText('駒を成りますか？')).toBeTruthy()
     })
-
-    // TODO: Test promotion dialog appearance when moving pawn to promotion zone
-    // This test is a placeholder for manual testing
-    expect(true).toBe(true)
   })
 
   it('should allow choosing to promote', async () => {
-    // TODO: Test that clicking "成る" button promotes the piece
-    expect(true).toBe(true)
+    const game = makeGame({
+      boardState: [
+        { row: 3, column: 4, type: 'PAWN', owner: 'BLACK', promoted: false },
+      ],
+    })
+    const { container } = renderGame(game)
+
+    const cells = container.querySelectorAll('.board-cell')
+    fireEvent.click(cells[3 * 9 + 4])
+    fireEvent.click(cells[1 * 9 + 4])
+
+    await waitFor(() => {
+      expect(screen.queryByText('駒を成りますか？')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByText('成る'))
+
+    await waitFor(() => {
+      expect(mockMakeMove).toHaveBeenCalledWith(
+        'test-game-id',
+        expect.objectContaining({ promote: true })
+      )
+    })
   })
 
   it('should allow choosing not to promote', async () => {
-    // TODO: Test that clicking "成らない" button does not promote the piece
-    expect(true).toBe(true)
+    const game = makeGame({
+      boardState: [
+        { row: 3, column: 4, type: 'PAWN', owner: 'BLACK', promoted: false },
+      ],
+    })
+    const { container } = renderGame(game)
+
+    const cells = container.querySelectorAll('.board-cell')
+    fireEvent.click(cells[3 * 9 + 4])
+    fireEvent.click(cells[1 * 9 + 4])
+
+    await waitFor(() => {
+      expect(screen.queryByText('駒を成りますか？')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByText('成らない'))
+
+    await waitFor(() => {
+      expect(mockMakeMove).toHaveBeenCalledWith(
+        'test-game-id',
+        expect.objectContaining({ promote: false })
+      )
+    })
   })
 
-  it('should auto-promote when must promote', async () => {
-    // TODO: Test that pieces that must promote (pawn/lance to row 0, knight to row 0-1) auto-promote
-    expect(true).toBe(true)
+  it('should auto-promote when must promote (PAWN to row 0)', async () => {
+    const game = makeGame({
+      boardState: [
+        { row: 1, column: 4, type: 'PAWN', owner: 'BLACK', promoted: false },
+      ],
+    })
+    const { container } = renderGame(game)
+
+    const cells = container.querySelectorAll('.board-cell')
+    // Select pawn at row 1
+    fireEvent.click(cells[1 * 9 + 4])
+    // Move to row 0 (must promote)
+    fireEvent.click(cells[0 * 9 + 4])
+
+    // No dialog - auto-promote
+    await waitFor(() => {
+      expect(screen.queryByText('駒を成りますか？')).toBeNull()
+      expect(mockMakeMove).toHaveBeenCalledWith(
+        'test-game-id',
+        expect.objectContaining({ promote: true })
+      )
+    })
   })
 
-  it('should highlight promotion zone when piece selected', async () => {
-    // TODO: Test that promotion zone (rows 0-2 for BLACK, 6-8 for WHITE) is highlighted
-    expect(true).toBe(true)
+  it('should highlight promotion zone when BLACK piece selected', async () => {
+    const game = makeGame({
+      boardState: [
+        { row: 5, column: 4, type: 'PAWN', owner: 'BLACK', promoted: false },
+      ],
+    })
+    const { container } = renderGame(game)
+
+    const cells = container.querySelectorAll('.board-cell')
+    fireEvent.click(cells[5 * 9 + 4])
+
+    // Rows 0-2 should be highlighted as promotion zone (27 cells)
+    const promotionZoneCells = container.querySelectorAll('.promotion-zone')
+    expect(promotionZoneCells.length).toBeGreaterThan(0)
   })
 
-  it('should not show promotion dialog for non-promotable pieces', async () => {
-    // TODO: Test that gold, king, already promoted pieces don't trigger dialog
-    expect(true).toBe(true)
+  it('should not show promotion dialog for non-promotable pieces (GOLD)', async () => {
+    const game = makeGame({
+      boardState: [
+        { row: 5, column: 4, type: 'GOLD', owner: 'BLACK', promoted: false },
+      ],
+    })
+    const { container } = renderGame(game)
+
+    const cells = container.querySelectorAll('.board-cell')
+    // Select GOLD at row 5
+    fireEvent.click(cells[5 * 9 + 4])
+    // Move to row 1 (promotion zone, but GOLD cannot promote)
+    fireEvent.click(cells[1 * 9 + 4])
+
+    await waitFor(() => {
+      expect(screen.queryByText('駒を成りますか？')).toBeNull()
+      expect(mockMakeMove).toHaveBeenCalledWith(
+        'test-game-id',
+        expect.objectContaining({ promote: false })
+      )
+    })
   })
 })

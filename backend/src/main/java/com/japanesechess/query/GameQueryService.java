@@ -162,6 +162,10 @@ public class GameQueryService {
             }
         }
 
+        dto.setAiGame(gameEntity.getIsAiGame());
+        dto.setAiDifficulty(gameEntity.getAiDifficulty());
+        dto.setAiThinking(false);
+
         return dto;
     }
 

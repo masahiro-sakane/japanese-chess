@@ -2,9 +2,75 @@ import { useEffect, useState } from 'react'
 import { useGameStore } from '../stores/gameStore'
 import { gameService } from '../services/gameService'
 import type { DailyGameCountDto, PlayerRankingDto } from '../types/api'
+import Spinner from '@atlaskit/spinner'
+import SectionMessage, { SectionMessageAction } from '@atlaskit/section-message'
+import DynamicTable from '@atlaskit/dynamic-table'
+import PageHeader from '@atlaskit/page-header'
+import { token } from '@atlaskit/tokens'
 import { GameStatusPieChart } from './charts/GameStatusPieChart'
 import { DailyGamesLineChart } from './charts/DailyGamesLineChart'
 import { PlayerRankingBarChart } from './charts/PlayerRankingBarChart'
+
+const RANKING_HEAD = {
+  cells: [
+    { key: 'rank', content: '順位', width: 8 },
+    { key: 'playerId', content: 'プレイヤーID' },
+    { key: 'totalGames', content: '総対局', width: 10 },
+    { key: 'wins', content: '勝利', width: 10 },
+    { key: 'losses', content: '敗北', width: 10 },
+    { key: 'winRate', content: '勝率', width: 10 },
+  ],
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={{
+      backgroundColor: '#FFFFFF',
+      border: `1px solid ${token('color.border', '#DFE1E6')}`,
+      borderRadius: 8,
+      padding: token('space.200', '16px'),
+      textAlign: 'center',
+      flex: 1,
+    }}>
+      <div style={{
+        fontSize: 13,
+        color: token('color.text.subtle', '#6B778C'),
+        marginBottom: token('space.075', '6px'),
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 36,
+        fontWeight: 700,
+        color: token('color.text', '#172B4D'),
+      }}>
+        {value}
+      </div>
+    </div>
+  )
+}
+
+function ChartCard({ title, children, fullWidth = false }: { title: string; children: React.ReactNode; fullWidth?: boolean }) {
+  return (
+    <div style={{
+      backgroundColor: '#FFFFFF',
+      border: `1px solid ${token('color.border', '#DFE1E6')}`,
+      borderRadius: 8,
+      padding: token('space.200', '16px'),
+      gridColumn: fullWidth ? '1 / -1' : undefined,
+    }}>
+      <h3 style={{
+        margin: `0 0 ${token('space.150', '12px')} 0`,
+        fontSize: 14,
+        fontWeight: 600,
+        color: token('color.text', '#172B4D'),
+      }}>
+        {title}
+      </h3>
+      {children}
+    </div>
+  )
+}
 
 export function Statistics() {
   const { statistics, loading, error, fetchStatistics, clearError } = useGameStore()
@@ -18,104 +84,112 @@ export function Statistics() {
 
   useEffect(() => {
     setChartsLoading(true)
-    Promise.all([
-      gameService.getDailyGameCounts(),
-      gameService.getPlayerRankings(),
-    ])
+    Promise.all([gameService.getDailyGameCounts(), gameService.getPlayerRankings()])
       .then(([daily, rank]) => {
         setDailyCounts(daily)
         setRankings(rank)
       })
-      .catch(() => {
-        // Chart data errors are non-critical; show empty state
-      })
+      .catch(() => { /* non-critical */ })
       .finally(() => setChartsLoading(false))
   }, [])
 
-  if (loading && !statistics) {
-    return <div className="loading">読み込み中...</div>
-  }
+  const rankingRows = rankings.map(r => ({
+    key: r.playerId,
+    cells: [
+      { key: 'rank', content: r.rank },
+      {
+        key: 'playerId',
+        content: (
+          <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.playerId}</span>
+        ),
+      },
+      { key: 'totalGames', content: r.totalGames },
+      {
+        key: 'wins',
+        content: (
+          <span style={{ color: token('color.text.success', '#006644'), fontWeight: 600 }}>
+            {r.wins}
+          </span>
+        ),
+      },
+      {
+        key: 'losses',
+        content: (
+          <span style={{ color: token('color.text.danger', '#AE2A19') }}>
+            {r.losses}
+          </span>
+        ),
+      },
+      { key: 'winRate', content: `${r.winRate.toFixed(1)}%` },
+    ],
+  }))
 
-  if (error) {
+  if (loading && !statistics) {
     return (
-      <div className="error">
-        <p>エラー: {error}</p>
-        <button onClick={clearError}>閉じる</button>
+      <div style={{ display: 'flex', justifyContent: 'center', padding: token('space.600', '48px') }}>
+        <Spinner size="large" label="読み込み中..." />
       </div>
     )
   }
 
-  if (!statistics) {
-    return null
+  if (error) {
+    return (
+      <SectionMessage
+        appearance="error"
+        title="エラーが発生しました"
+        actions={[
+          <SectionMessageAction key="close" onClick={clearError}>閉じる</SectionMessageAction>,
+        ]}
+      >
+        {error}
+      </SectionMessage>
+    )
   }
 
-  return (
-    <div className="statistics">
-      <h2>統計情報</h2>
+  if (!statistics) return null
 
-      {/* Summary cards */}
-      <div className="statistics-grid">
-        <div className="stat-card">
-          <div className="stat-label">総対局数</div>
-          <div className="stat-value">{statistics.totalGames}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">対局中</div>
-          <div className="stat-value">{statistics.activeGames}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">終了</div>
-          <div className="stat-value">{statistics.completedGames}</div>
-        </div>
+  return (
+    <div>
+      <PageHeader>統計情報</PageHeader>
+
+      {/* サマリーカード */}
+      <div style={{ display: 'flex', gap: token('space.200', '16px'), marginBottom: token('space.300', '24px'), flexWrap: 'wrap' }}>
+        <StatCard label="総対局数" value={statistics.totalGames} />
+        <StatCard label="対局中" value={statistics.activeGames} />
+        <StatCard label="終了" value={statistics.completedGames} />
       </div>
 
-      {/* Charts */}
+      {/* グラフ */}
       {chartsLoading ? (
-        <div className="loading" style={{ marginTop: '20px' }}>グラフ読み込み中...</div>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: token('space.400', '32px') }}>
+          <Spinner size="medium" label="グラフ読み込み中..." />
+        </div>
       ) : (
-        <div className="charts-grid">
-          <div className="chart-card">
-            <h3>対局状況 (円グラフ)</h3>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+          gap: token('space.200', '16px'),
+        }}>
+          <ChartCard title="対局状況 (円グラフ)">
             <GameStatusPieChart statistics={statistics} />
-          </div>
+          </ChartCard>
 
-          <div className="chart-card">
-            <h3>日別対局数 - 過去30日 (折れ線グラフ)</h3>
+          <ChartCard title="日別対局数 - 過去30日 (折れ線グラフ)">
             <DailyGamesLineChart data={dailyCounts} />
-          </div>
+          </ChartCard>
 
-          <div className="chart-card chart-card--full">
-            <h3>プレイヤーランキング Top10 (棒グラフ)</h3>
+          <ChartCard title="プレイヤーランキング Top10 (棒グラフ)" fullWidth>
             <PlayerRankingBarChart rankings={rankings} />
             {rankings.length > 0 && (
-              <table className="ranking-table">
-                <thead>
-                  <tr>
-                    <th>順位</th>
-                    <th>プレイヤーID</th>
-                    <th>総対局</th>
-                    <th>勝利</th>
-                    <th>敗北</th>
-                    <th>勝率</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rankings.map((r) => (
-                    <tr key={r.playerId}>
-                      <td>{r.rank}</td>
-                      <td className="monospace" style={{ fontSize: '12px' }}>
-                        {r.playerId}
-                      </td>
-                      <td>{r.totalGames}</td>
-                      <td style={{ color: '#4CAF50', fontWeight: 'bold' }}>{r.wins}</td>
-                      <td style={{ color: '#f44336' }}>{r.losses}</td>
-                      <td>{r.winRate.toFixed(1)}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div style={{ marginTop: token('space.200', '16px') }}>
+                <DynamicTable
+                  head={RANKING_HEAD}
+                  rows={rankingRows}
+                  isFixedSize
+                />
+              </div>
             )}
-          </div>
+          </ChartCard>
         </div>
       )}
     </div>
